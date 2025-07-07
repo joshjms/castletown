@@ -1,4 +1,4 @@
-package castletown
+package sandbox
 
 const (
 	LAKESIDE_ROOT     = "/tmp/castletown"

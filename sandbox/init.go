@@ -1,4 +1,4 @@
-package castletown
+package sandbox
 
 import (
 	"os"
