@@ -7,12 +7,16 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/specconv"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type Sandbox struct {
 	ID     string
 	Rootfs string
 	Config *Config
+
+	spec      *specs.Spec
+	overlayfs *Overlayfs
 }
 
 func NewSandbox(id string, cfg *Config) *Sandbox {
@@ -22,20 +26,36 @@ func NewSandbox(id string, cfg *Config) *Sandbox {
 	}
 }
 
-func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
+// Init prepares the sandbox root filesystem and OCI spec
+func (s *Sandbox) Init(ctx context.Context) error {
 	overlayfs, err := prepareRootfs(s.ID, s.Config.Rootfs, s.Config.UserNamespace)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing rootfs: %w", err)
+		return fmt.Errorf("error preparing rootfs: %w", err)
 	}
 
 	spec, err := createSpec(s.ID, s.Config, overlayfs)
 	if err != nil {
-		return nil, fmt.Errorf("error creating oci spec: %w", err)
+		return fmt.Errorf("error creating oci spec: %w", err)
+	}
+
+	s.overlayfs = overlayfs
+	s.spec = spec
+	return nil
+}
+
+// Run runs a command inside the sandbox and returns a Report
+func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
+	if s.spec == nil {
+		return nil, fmt.Errorf("spec not found")
+	}
+
+	if s.overlayfs == nil {
+		return nil, fmt.Errorf("overlayfs config not found")
 	}
 
 	libcontainerConfig, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		UseSystemdCgroup: false,
-		Spec:             spec,
+		Spec:             s.spec,
 		RootlessEUID:     true,
 		RootlessCgroups:  true,
 	})

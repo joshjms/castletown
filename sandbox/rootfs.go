@@ -15,7 +15,7 @@ type Overlayfs struct {
 func prepareRootfs(id string, rootfs string, userCfg *UserNamespaceConfig) (*Overlayfs, error) {
 	lowerDir := rootfs
 
-	sandboxRoot := filepath.Join(LAKESIDE_ROOT, id)
+	sandboxRoot := filepath.Join(CONTAINERS_ROOT, id)
 
 	upperDir := filepath.Join(sandboxRoot, "upper")
 	if err := os.MkdirAll(upperDir, 0755); err != nil {

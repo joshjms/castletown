@@ -2,14 +2,21 @@ package sandbox
 
 import (
 	"context"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSandbox(t *testing.T) {
 	Init()
 
+	rootfsDir, err := createRootfs("gcc:11-bullseye")
+	require.NoError(t, err, "failed to create rootfs directory: %v", err)
+	defer os.RemoveAll(rootfsDir)
+
 	config := &Config{
-		Rootfs: "/var/lib/sandbox/images/ubuntu",
+		Rootfs: rootfsDir,
 		Args:   []string{"sh", "-c", "echo \"don't forget\""},
 		Cwd:    "/",
 		Env: []string{
@@ -30,13 +37,16 @@ func TestSandbox(t *testing.T) {
 	}
 
 	sandbox := NewSandbox("sandbox-01", config)
-	report, err := sandbox.Run(context.Background())
-	if err != nil {
-		t.Fatalf("failed to execute sandbox: %v", err)
-	}
+	ctx := context.Background()
 
-	if report.ExitCode != 0 || report.Stdout != "don't forget\n" {
-		t.Errorf("unexpected report: %+v", report)
-	}
+	err = sandbox.Init(ctx)
+	require.NoError(t, err, "failed to init sandbox: %v", err)
+
+	report, err := sandbox.Run(ctx)
+	require.NoError(t, err, "failed to execute sandbox: %v", err)
+
+	require.Equal(t, report.ExitCode, 0, "exit code != 0")
+	require.Equal(t, report.Stdout, "don't forget\n", "stdout is different")
+
 	t.Logf("Sandbox executed successfully: %+v", report)
 }
