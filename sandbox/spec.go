@@ -41,7 +41,6 @@ func createSpec(id string, cfg *Config, overlayfs *Overlayfs) (*specs.Spec, erro
 			NoNewPrivileges: true,
 		},
 		Root: &specs.Root{
-			Path:     "/home/joshjms/bundle/rootfs",
 			Readonly: false,
 		},
 		Hostname: "castletown",
