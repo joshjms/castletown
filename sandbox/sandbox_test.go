@@ -11,9 +11,7 @@ import (
 func TestSandboxRun(t *testing.T) {
 	Init()
 
-	rootfsDir, err := createRootfs("gcc:15-bookworm")
-	require.NoError(t, err, "failed to create rootfs directory: %v", err)
-	defer os.RemoveAll(rootfsDir)
+	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	config := &Config{
 		RootfsImageDir: rootfsDir,
@@ -51,9 +49,7 @@ func TestSandboxRun(t *testing.T) {
 func TestSandboxCompileExec(t *testing.T) {
 	Init()
 
-	rootfsDir, err := createRootfs("gcc:15-bookworm")
-	require.NoError(t, err, "failed to create rootfs directory: %v", err)
-	defer os.RemoveAll(rootfsDir)
+	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	compileConfig := &Config{
 		RootfsImageDir: rootfsDir,
