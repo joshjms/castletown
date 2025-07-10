@@ -32,7 +32,7 @@ type Report struct {
 	WallTime int64
 }
 
-func MakeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, stats *stats.Metrics) (*Report, error) {
+func makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, stats *stats.Metrics) (*Report, error) {
 	stdout, err := io.ReadAll(stdoutBuf)
 	if err != nil {
 		return nil, fmt.Errorf("error reading stdout: %w", err)

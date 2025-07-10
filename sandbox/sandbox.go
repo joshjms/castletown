@@ -11,9 +11,8 @@ import (
 )
 
 type Sandbox struct {
-	ID     string
-	Rootfs string
-	Config *Config
+	id     string
+	config *Config
 
 	spec      *specs.Spec
 	overlayfs *Overlayfs
@@ -21,37 +20,29 @@ type Sandbox struct {
 
 func NewSandbox(id string, cfg *Config) *Sandbox {
 	return &Sandbox{
-		ID:     id,
-		Config: cfg,
+		id:     id,
+		config: cfg,
 	}
-}
-
-// Init prepares the sandbox root filesystem and OCI spec
-func (s *Sandbox) Init(ctx context.Context) error {
-	overlayfs, err := prepareRootfs(s.ID, s.Config.Rootfs, s.Config.UserNamespace)
-	if err != nil {
-		return fmt.Errorf("error preparing rootfs: %w", err)
-	}
-
-	spec, err := createSpec(s.ID, s.Config, overlayfs)
-	if err != nil {
-		return fmt.Errorf("error creating oci spec: %w", err)
-	}
-
-	s.overlayfs = overlayfs
-	s.spec = spec
-	return nil
 }
 
 // Run runs a command inside the sandbox and returns a Report
 func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
-	if s.spec == nil {
-		return nil, fmt.Errorf("spec not found")
+	overlayfs, err := s.prepare()
+	if err != nil {
+		return nil, fmt.Errorf("error preparing rootfs: %w", err)
+	}
+	defer s.destroy()
+	s.overlayfs = overlayfs
+
+	if err := s.copy(s.config.Copy); err != nil {
+		return nil, fmt.Errorf("error copying files into sandbox: %w", err)
 	}
 
-	if s.overlayfs == nil {
-		return nil, fmt.Errorf("overlayfs config not found")
+	spec, err := createSpec(s.id, s.config, overlayfs)
+	if err != nil {
+		return nil, fmt.Errorf("error creating oci spec: %w", err)
 	}
+	s.spec = spec
 
 	libcontainerConfig, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		UseSystemdCgroup: false,
@@ -63,7 +54,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("error creating libcontainer config: %w", err)
 	}
 
-	container, err := libcontainer.Create(LIBCONTAINER_ROOT, s.ID, libcontainerConfig)
+	container, err := libcontainer.Create(LIBCONTAINER_ROOT, s.id, libcontainerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating container: %w", err)
 	}
@@ -73,16 +64,16 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 
 	var stdinBuf, stdoutBuf, stderrBuf bytes.Buffer
 
-	if s.Config.Stdin != "" {
-		stdinBuf.WriteString(s.Config.Stdin)
+	if s.config.Stdin != "" {
+		stdinBuf.WriteString(s.config.Stdin)
 	}
 
 	process := &libcontainer.Process{
-		Args:            s.Config.Args,
-		Env:             s.Config.Env,
-		UID:             65534,
-		GID:             65534,
-		Cwd:             s.Config.Cwd,
+		Args:            s.config.Args,
+		Env:             s.config.Env,
+		UID:             0,
+		GID:             0,
+		Cwd:             s.config.Cwd,
 		NoNewPrivileges: &noNewPrivileges,
 		Stdin:           &stdinBuf,
 		Stdout:          &stdoutBuf,
@@ -99,7 +90,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("error waiting for process: %w", err)
 	}
 
-	cgManager, err := loadCgroup(s.ID)
+	cgManager, err := loadCgroup(s.id)
 	if err != nil {
 		return nil, fmt.Errorf("error loading cgroup: %w", err)
 	}
@@ -109,9 +100,13 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("error getting cgroup stats: %w", err)
 	}
 
-	report, err := MakeReport(&stdoutBuf, &stderrBuf, state, stats)
+	report, err := makeReport(&stdoutBuf, &stderrBuf, state, stats)
 	if err != nil {
 		return nil, fmt.Errorf("error making report: %w", err)
+	}
+
+	if err := s.save(s.config.Save); err != nil {
+		return nil, fmt.Errorf("error saving files from sandbox: %w", err)
 	}
 
 	return report, nil

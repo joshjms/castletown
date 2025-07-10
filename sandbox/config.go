@@ -1,14 +1,19 @@
 package sandbox
 
 type Config struct {
-	Rootfs        string
-	Args          []string
-	Stdin         string
-	Cwd           string
-	Env           []string
+	RootfsImageDir string
+
+	Args  []string
+	Stdin string
+	Cwd   string
+	Env   []string
+
 	UserNamespace *UserNamespaceConfig
 	Cgroup        *CgroupConfig
 	Rlimit        *RlimitConfig
+
+	Copy []File
+	Save []File
 }
 
 type UserNamespaceConfig struct {
@@ -39,4 +44,9 @@ type RlimitConfig struct {
 type Rlimit struct {
 	Hard uint64
 	Soft uint64
+}
+
+type File struct {
+	Src string
+	Dst string
 }

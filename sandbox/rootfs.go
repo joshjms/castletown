@@ -12,10 +12,10 @@ type Overlayfs struct {
 	WorkDir  string
 }
 
-func prepareRootfs(id string, rootfs string, userCfg *UserNamespaceConfig) (*Overlayfs, error) {
-	lowerDir := rootfs
+func (s *Sandbox) prepare() (*Overlayfs, error) {
+	lowerDir := s.config.RootfsImageDir
 
-	sandboxRoot := filepath.Join(CONTAINERS_ROOT, id)
+	sandboxRoot := filepath.Join(CONTAINERS_ROOT, s.id)
 
 	upperDir := filepath.Join(sandboxRoot, "upper")
 	if err := os.MkdirAll(upperDir, 0755); err != nil {
@@ -27,11 +27,11 @@ func prepareRootfs(id string, rootfs string, userCfg *UserNamespaceConfig) (*Ove
 		return nil, fmt.Errorf("error mkdir workdir: %w", err)
 	}
 
-	if err := os.Chown(upperDir, int(userCfg.RootUID), int(userCfg.RootGID)); err != nil {
+	if err := os.Chown(upperDir, int(s.config.UserNamespace.RootUID), int(s.config.UserNamespace.RootGID)); err != nil {
 		return nil, fmt.Errorf("error chown upperdir: %w", err)
 	}
 
-	if err := os.Chown(workDir, int(userCfg.RootUID), int(userCfg.RootGID)); err != nil {
+	if err := os.Chown(workDir, int(s.config.UserNamespace.RootUID), int(s.config.UserNamespace.RootGID)); err != nil {
 		return nil, fmt.Errorf("error chown workdir: %w", err)
 	}
 
@@ -40,4 +40,13 @@ func prepareRootfs(id string, rootfs string, userCfg *UserNamespaceConfig) (*Ove
 		UpperDir: upperDir,
 		WorkDir:  workDir,
 	}, nil
+}
+func (s *Sandbox) destroy() error {
+	sandboxRoot := filepath.Join(CONTAINERS_ROOT, s.id)
+
+	if err := os.RemoveAll(sandboxRoot); err != nil {
+		return err
+	}
+
+	return nil
 }
