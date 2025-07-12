@@ -74,8 +74,8 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	process := &libcontainer.Process{
 		Args:            s.config.Args,
 		Env:             s.config.Env,
-		UID:             0,
-		GID:             0,
+		UID:             s.config.ContainerUID,
+		GID:             s.config.ContainerGID,
 		Cwd:             s.config.Cwd,
 		NoNewPrivileges: &noNewPrivileges,
 		Stdin:           &stdinBuf,

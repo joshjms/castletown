@@ -8,6 +8,8 @@ type Config struct {
 	Cwd   string
 	Env   []string
 
+	ContainerUID  int
+	ContainerGID  int
 	UserNamespace *UserNamespaceConfig
 
 	TimeLimitMs int64

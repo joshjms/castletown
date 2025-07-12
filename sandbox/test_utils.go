@@ -24,10 +24,12 @@ func (tc *Testcase) Run() error {
 	compileConfig := &Config{
 		RootfsImageDir: rootfsDir,
 		Args:           []string{"g++", "main.cpp", "-o", "main"},
-		Cwd:            "/",
+		Cwd:            "/box",
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},
+		ContainerUID: 65534,
+		ContainerGID: 65534,
 		UserNamespace: &UserNamespaceConfig{
 			RootUID:     uint32(os.Getuid()),
 			UIDMapStart: 100000,
@@ -44,12 +46,12 @@ func (tc *Testcase) Run() error {
 		Copy: []File{
 			{
 				Src: tc.File,
-				Dst: "/main.cpp",
+				Dst: "/box/main.cpp",
 			},
 		},
 		Save: []File{
 			{
-				Src: "/main",
+				Src: "/box/main",
 				Dst: "./main",
 			},
 		},
@@ -70,10 +72,12 @@ func (tc *Testcase) Run() error {
 	execConfig := &Config{
 		RootfsImageDir: rootfsDir,
 		Args:           []string{"./main"},
-		Cwd:            "/",
+		Cwd:            "/box",
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},
+		ContainerUID: 65534,
+		ContainerGID: 65534,
 		UserNamespace: &UserNamespaceConfig{
 			RootUID:     uint32(os.Getuid()),
 			UIDMapStart: 100000,
@@ -91,7 +95,7 @@ func (tc *Testcase) Run() error {
 		Copy: []File{
 			{
 				Src: "main",
-				Dst: "main",
+				Dst: "/box/main",
 			},
 		},
 	}
