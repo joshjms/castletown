@@ -61,7 +61,7 @@ func TestSandboxCompileExec(t *testing.T) {
 		TimeLimitMs:    1000,
 	}
 
-	require.NoError(t, tc.Run())
+	tc.Run(t)
 }
 
 func TestSandboxTimeLimitExceeded(t *testing.T) {
@@ -75,5 +75,19 @@ func TestSandboxTimeLimitExceeded(t *testing.T) {
 		TimeLimitMs:    1000,
 	}
 
-	require.NoError(t, tc.Run())
+	tc.Run(t)
+}
+
+func TestSandboxMemoryLimitExceeded(t *testing.T) {
+	Init()
+
+	expectedStatus := STATUS_MEMORY_LIMIT_EXCEEDED
+
+	tc := Testcase{
+		File:           "test_files/oom.cpp",
+		ExpectedStatus: &expectedStatus,
+		TimeLimitMs:    10000,
+	}
+
+	tc.Run(t)
 }

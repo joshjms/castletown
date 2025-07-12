@@ -51,10 +51,15 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		return nil, fmt.Errorf("error getting cgroup stats: %w", err)
 	}
 
-	status := STATUS_OK
+	var status Status
 
-	if timeLimitExceeded {
+	switch {
+	case timeLimitExceeded:
 		status = STATUS_TIME_LIMIT_EXCEEDED
+	case stats.GetMemory().GetMaxUsage() > uint64(s.config.Cgroup.Memory):
+		status = STATUS_MEMORY_LIMIT_EXCEEDED
+	default:
+		status = STATUS_OK
 	}
 
 	return &Report{
@@ -64,6 +69,6 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		Stdout:   string(stdout),
 		Stderr:   string(stderr),
 		CPUTime:  stats.GetCPU().GetUserUsec(),
-		Memory:   stats.GetMemory().GetUsage(),
+		Memory:   stats.GetMemory().GetMaxUsage(),
 	}, nil
 }

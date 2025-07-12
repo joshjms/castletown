@@ -2,10 +2,11 @@ package sandbox
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 type Testcase struct {
@@ -18,7 +19,7 @@ type Testcase struct {
 	TimeLimitMs int64
 }
 
-func (tc *Testcase) Run() error {
+func (tc *Testcase) Run(t *testing.T) {
 	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	compileConfig := &Config{
@@ -62,12 +63,11 @@ func (tc *Testcase) Run() error {
 
 	compileReport, err := compileSandbox.Run(ctx)
 	defer os.Remove("main")
-	if err != nil {
-		return err
-	}
-	if compileReport.Status != STATUS_OK {
-		return fmt.Errorf("status not ok")
-	}
+
+	require.NoError(t, err, "failed to compile code")
+	require.Equal(t, STATUS_OK, compileReport.Status, "status not ok")
+
+	t.Logf("%v\n", compileReport)
 
 	execConfig := &Config{
 		RootfsImageDir: rootfsDir,
@@ -89,7 +89,7 @@ func (tc *Testcase) Run() error {
 		TimeLimitMs: 1000,
 		Cgroup: &CgroupConfig{
 			CpuQuota:  100000,
-			Memory:    128 * 1024 * 1024,
+			Memory:    256 * 1024 * 1024,
 			PidsLimit: 1,
 		},
 		Copy: []File{
@@ -104,17 +104,14 @@ func (tc *Testcase) Run() error {
 	ctx = context.Background()
 
 	execReport, err := execSandbox.Run(ctx)
-	if err != nil {
-		return err
+	t.Logf("%v\n", execReport)
+	require.NoError(t, err, "failed to execute code")
+
+	if tc.ExpectedStatus != nil {
+		require.Equal(t, *tc.ExpectedStatus, execReport.Status, "status != expectedStatus")
 	}
 
-	if tc.ExpectedStatus != nil && execReport.Status != *tc.ExpectedStatus {
-		return fmt.Errorf("status != expectedStatus, expected: %v, got: %v", *tc.ExpectedStatus, execReport.Status)
+	if tc.ExpectedOutput != nil {
+		require.Equal(t, *tc.ExpectedOutput, execReport.Stdout, "output != expectedOutput")
 	}
-
-	if tc.ExpectedOutput != nil && execReport.Stdout != *tc.ExpectedOutput {
-		return fmt.Errorf("output != expectedOutput, expected: %v, got: %v", *tc.ExpectedOutput, execReport.Stdout)
-	}
-
-	return nil
 }
