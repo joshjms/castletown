@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,13 +29,14 @@ func TestSandboxRun(t *testing.T) {
 			GIDMapStart: 100000,
 			GIDMapCount: 65534,
 		},
+		TimeLimitMs: 1000,
 		Cgroup: &CgroupConfig{
 			CpuQuota: 1000000,
 			Memory:   512 * 1024 * 1024,
 		},
 	}
 
-	sandbox := NewSandbox("sandbox-01", config)
+	sandbox := NewSandbox(uuid.New().String(), config)
 	ctx := context.Background()
 
 	report, err := sandbox.Run(ctx)
@@ -66,8 +68,9 @@ func TestSandboxCompileExec(t *testing.T) {
 			GIDMapStart: 100000,
 			GIDMapCount: 65534,
 		},
+		TimeLimitMs: 5000,
 		Cgroup: &CgroupConfig{
-			CpuQuota: 1000000,
+			CpuQuota: 100000,
 			Memory:   512 * 1024 * 1024,
 		},
 		Copy: []File{
@@ -84,7 +87,7 @@ func TestSandboxCompileExec(t *testing.T) {
 		},
 	}
 
-	compileSandbox := NewSandbox("sandbox-01", compileConfig)
+	compileSandbox := NewSandbox(uuid.New().String(), compileConfig)
 	ctx := context.Background()
 
 	compileReport, err := compileSandbox.Run(ctx)
@@ -109,8 +112,9 @@ func TestSandboxCompileExec(t *testing.T) {
 			GIDMapStart: 100000,
 			GIDMapCount: 65534,
 		},
+		TimeLimitMs: 1000,
 		Cgroup: &CgroupConfig{
-			CpuQuota:  1000000,
+			CpuQuota:  100000,
 			Memory:    512 * 1024 * 1024,
 			PidsLimit: 1,
 		},
@@ -122,7 +126,7 @@ func TestSandboxCompileExec(t *testing.T) {
 		},
 	}
 
-	execSandbox := NewSandbox("sandbox-02", execConfig)
+	execSandbox := NewSandbox(uuid.New().String(), execConfig)
 	ctx = context.Background()
 
 	execReport, err := execSandbox.Run(ctx)
@@ -130,6 +134,94 @@ func TestSandboxCompileExec(t *testing.T) {
 
 	require.Equal(t, execReport.ExitCode, 0, "exit code != 0")
 	require.Equal(t, execReport.Stdout, "don't forget\n", "stdout is different")
+
+	t.Logf("Exec executed successfully: %+v", execReport)
+}
+
+func TestSandboxTimeLimitExceeded(t *testing.T) {
+	Init()
+
+	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
+
+	compileConfig := &Config{
+		RootfsImageDir: rootfsDir,
+		Args:           []string{"g++", "main.cpp", "-o", "main"},
+		Cwd:            "/",
+		Env: []string{
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
+		UserNamespace: &UserNamespaceConfig{
+			RootUID:     uint32(os.Getuid()),
+			UIDMapStart: 100000,
+			UIDMapCount: 65534,
+			RootGID:     uint32(os.Getgid()),
+			GIDMapStart: 100000,
+			GIDMapCount: 65534,
+		},
+		TimeLimitMs: 5000,
+		Cgroup: &CgroupConfig{
+			CpuQuota: 100000,
+			Memory:   512 * 1024 * 1024,
+		},
+		Copy: []File{
+			{
+				Src: "test_files/tle.cpp",
+				Dst: "/main.cpp",
+			},
+		},
+		Save: []File{
+			{
+				Src: "/main",
+				Dst: "./main",
+			},
+		},
+	}
+
+	compileSandbox := NewSandbox(uuid.New().String(), compileConfig)
+	ctx := context.Background()
+
+	compileReport, err := compileSandbox.Run(ctx)
+	defer os.Remove("main")
+	require.NoError(t, err, "failed to execute sandbox")
+	require.Equal(t, compileReport.ExitCode, 0, "exit code != 0")
+
+	t.Logf("Compile executed successfully: %+v", compileReport)
+
+	execConfig := &Config{
+		RootfsImageDir: rootfsDir,
+		Args:           []string{"./main"},
+		Cwd:            "/",
+		Env: []string{
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		},
+		UserNamespace: &UserNamespaceConfig{
+			RootUID:     uint32(os.Getuid()),
+			UIDMapStart: 100000,
+			UIDMapCount: 65534,
+			RootGID:     uint32(os.Getgid()),
+			GIDMapStart: 100000,
+			GIDMapCount: 65534,
+		},
+		TimeLimitMs: 1000,
+		Cgroup: &CgroupConfig{
+			CpuQuota:  100000,
+			Memory:    128 * 1024 * 1024,
+			PidsLimit: 1,
+		},
+		Copy: []File{
+			{
+				Src: "main",
+				Dst: "main",
+			},
+		},
+	}
+
+	execSandbox := NewSandbox(uuid.New().String(), execConfig)
+	ctx = context.Background()
+
+	execReport, err := execSandbox.Run(ctx)
+	require.NoError(t, err, "failed to execute sandbox")
+	require.Equal(t, execReport.Status, STATUS_TIME_LIMIT_EXCEEDED, "")
 
 	t.Logf("Exec executed successfully: %+v", execReport)
 }

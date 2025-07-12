@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 )
 
-func (s *Sandbox) copy(files []File) error {
+func (s *Sandbox) copy() error {
+	files := s.config.Copy
+
 	for _, f := range files {
 		dstPath := filepath.Join(s.overlayfs.UpperDir, f.Dst)
 		if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
@@ -46,7 +48,9 @@ func (s *Sandbox) copy(files []File) error {
 	return nil
 }
 
-func (s *Sandbox) save(files []File) error {
+func (s *Sandbox) save() error {
+	files := s.config.Save
+
 	for _, f := range files {
 		srcPath := filepath.Join(s.overlayfs.UpperDir, f.Src)
 		srcInfo, err := os.Stat(srcPath)

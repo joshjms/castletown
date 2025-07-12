@@ -165,6 +165,12 @@ func defaultMounts() []specs.Mount {
 				"nr_inodes=4k",
 			},
 		},
+		{
+			Destination: "/sys",
+			Type:        "sysfs",
+			Source:      "sysfs",
+			Options:     []string{"nosuid", "noexec", "nodev", "ro"},
+		},
 	}
 }
 

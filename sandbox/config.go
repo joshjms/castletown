@@ -9,8 +9,10 @@ type Config struct {
 	Env   []string
 
 	UserNamespace *UserNamespaceConfig
-	Cgroup        *CgroupConfig
-	Rlimit        *RlimitConfig
+
+	TimeLimitMs int64
+	Cgroup      *CgroupConfig
+	Rlimit      *RlimitConfig
 
 	Copy []File
 	Save []File
@@ -26,7 +28,6 @@ type UserNamespaceConfig struct {
 }
 
 type CgroupConfig struct {
-	Path       string
 	CpuShares  uint64
 	CpuQuota   int64
 	CpusetCpus string

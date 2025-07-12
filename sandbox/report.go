@@ -5,8 +5,6 @@ import (
 	"io"
 	"os"
 	"syscall"
-
-	"github.com/containerd/cgroups/v3/cgroup2/stats"
 )
 
 type Status string
@@ -32,7 +30,7 @@ type Report struct {
 	WallTime int64
 }
 
-func makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, stats *stats.Metrics) (*Report, error) {
+func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool) (*Report, error) {
 	stdout, err := io.ReadAll(stdoutBuf)
 	if err != nil {
 		return nil, fmt.Errorf("error reading stdout: %w", err)
@@ -43,15 +41,29 @@ func makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, stats *s
 		return nil, fmt.Errorf("error reading stderr: %w", err)
 	}
 
-	r := &Report{
-		Status:   STATUS_OK,
+	cgManager, err := loadCgroup(s.id)
+	if err != nil {
+		return nil, fmt.Errorf("error loading cgroup: %w", err)
+	}
+
+	stats, err := cgManager.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("error getting cgroup stats: %w", err)
+	}
+
+	status := STATUS_OK
+
+	if timeLimitExceeded {
+		status = STATUS_TIME_LIMIT_EXCEEDED
+	}
+
+	return &Report{
+		Status:   status,
 		ExitCode: state.ExitCode(),
 		Signal:   state.Sys().(syscall.WaitStatus).Signal(),
 		Stdout:   string(stdout),
 		Stderr:   string(stderr),
-		CPUTime:  stats.GetCPU().UserUsec,
-		Memory:   stats.GetMemory().Usage,
-	}
-
-	return r, nil
+		CPUTime:  stats.GetCPU().GetUserUsec(),
+		Memory:   stats.GetMemory().GetUsage(),
+	}, nil
 }

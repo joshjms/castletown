@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 )
 
 type Sandbox struct {
@@ -34,9 +36,10 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	defer s.destroy()
 	s.overlayfs = overlayfs
 
-	if err := s.copy(s.config.Copy); err != nil {
+	if err := s.copy(); err != nil {
 		return nil, fmt.Errorf("error copying files into sandbox: %w", err)
 	}
+	defer s.save()
 
 	spec, err := createSpec(s.id, s.config, overlayfs)
 	if err != nil {
@@ -85,29 +88,20 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("error running container: %w", err)
 	}
 
-	state, err := process.Wait()
-	if err != nil {
-		return nil, fmt.Errorf("error waiting for process: %w", err)
-	}
+	processFinished := make(chan interface{}, 1)
+	timeLimitExceeded := false
 
-	cgManager, err := loadCgroup(s.id)
-	if err != nil {
-		return nil, fmt.Errorf("error loading cgroup: %w", err)
-	}
+	go func() {
+		select {
+		case <-processFinished:
+		case <-time.After(time.Duration(s.config.TimeLimitMs) * time.Millisecond):
+			timeLimitExceeded = true
+			container.Signal(unix.SIGKILL)
+		}
+	}()
 
-	stats, err := cgManager.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("error getting cgroup stats: %w", err)
-	}
+	state, _ := process.Wait()
+	processFinished <- struct{}{}
 
-	report, err := makeReport(&stdoutBuf, &stderrBuf, state, stats)
-	if err != nil {
-		return nil, fmt.Errorf("error making report: %w", err)
-	}
-
-	if err := s.save(s.config.Save); err != nil {
-		return nil, fmt.Errorf("error saving files from sandbox: %w", err)
-	}
-
-	return report, nil
+	return s.makeReport(&stdoutBuf, &stderrBuf, state, timeLimitExceeded)
 }
