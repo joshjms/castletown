@@ -7,4 +7,6 @@ int main() {
         x++;
     }
     cout << x << "\n";
+
+    return 0;
 }

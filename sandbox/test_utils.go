@@ -39,7 +39,7 @@ func (tc *Testcase) Run(t *testing.T) {
 			GIDMapStart: 100000,
 			GIDMapCount: 65534,
 		},
-		TimeLimitMs: tc.TimeLimitMs,
+		TimeLimitMs: 10000,
 		Cgroup: &CgroupConfig{
 			CpuQuota: 100000,
 			Memory:   512 * 1024 * 1024,
@@ -86,6 +86,7 @@ func (tc *Testcase) Run(t *testing.T) {
 	execConfig := &Config{
 		RootfsImageDir: rootfsDir,
 		Args:           []string{"./main"},
+		Stdin:          tc.Stdin,
 		Cwd:            "/box",
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

@@ -1,61 +1,18 @@
 package sandbox
 
 import (
-	"context"
-	"os"
 	"testing"
-
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 )
 
-func TestSandboxRun(t *testing.T) {
-	Init()
-
-	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
-
-	config := &Config{
-		RootfsImageDir: rootfsDir,
-		Args:           []string{"sh", "-c", "echo \"don't forget\""},
-		Cwd:            "/",
-		Env: []string{
-			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		},
-		UserNamespace: &UserNamespaceConfig{
-			RootUID:     uint32(os.Getuid()),
-			UIDMapStart: 100000,
-			UIDMapCount: 65534,
-			RootGID:     uint32(os.Getgid()),
-			GIDMapStart: 100000,
-			GIDMapCount: 65534,
-		},
-		TimeLimitMs: 1000,
-		Cgroup: &CgroupConfig{
-			CpuQuota: 1000000,
-			Memory:   512 * 1024 * 1024,
-		},
-	}
-
-	sandbox := NewSandbox(uuid.New().String(), config)
-	ctx := context.Background()
-
-	report, err := sandbox.Run(ctx)
-	require.NoError(t, err, "failed to execute sandbox: %v", err)
-
-	require.Equal(t, report.ExitCode, 0, "exit code != 0")
-	require.Equal(t, report.Stdout, "don't forget\n", "stdout is different")
-
-	t.Logf("Sandbox executed successfully: %+v", report)
-}
-
-func TestSandboxCompileExec(t *testing.T) {
+func TestSandboxAdd(t *testing.T) {
 	Init()
 
 	expectedStatus := STATUS_OK
-	expectedOutput := "don't forget\n"
+	expectedOutput := "15\n"
 
 	tc := Testcase{
-		File:           "test_files/hello.cpp",
+		File:           "test_files/add.cpp",
+		Stdin:          "6 9\n",
 		ExpectedStatus: &expectedStatus,
 		ExpectedOutput: &expectedOutput,
 		TimeLimitMs:    1000,
@@ -64,13 +21,27 @@ func TestSandboxCompileExec(t *testing.T) {
 	tc.Run(t)
 }
 
-func TestSandboxTimeLimitExceeded(t *testing.T) {
+func TestSandboxTimeLimitExceededA(t *testing.T) {
 	Init()
 
 	expectedStatus := STATUS_TIME_LIMIT_EXCEEDED
 
 	tc := Testcase{
-		File:           "test_files/tle.cpp",
+		File:           "test_files/tl1.cpp",
+		ExpectedStatus: &expectedStatus,
+		TimeLimitMs:    1000,
+	}
+
+	tc.Run(t)
+}
+
+func TestSandboxTimeLimitExceededB(t *testing.T) {
+	Init()
+
+	expectedStatus := STATUS_TIME_LIMIT_EXCEEDED
+
+	tc := Testcase{
+		File:           "test_files/printloop.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    1000,
 	}
@@ -84,7 +55,7 @@ func TestSandboxMemoryLimitExceeded(t *testing.T) {
 	expectedStatus := STATUS_MEMORY_LIMIT_EXCEEDED
 
 	tc := Testcase{
-		File:           "test_files/oom.cpp",
+		File:           "test_files/mem1.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    10000,
 	}

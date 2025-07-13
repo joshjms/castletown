@@ -30,6 +30,20 @@ type Report struct {
 	WallTime int64
 }
 
+func (r Report) String() string {
+	stdoutTrim := r.Stdout
+	if len(stdoutTrim) > 200 {
+		stdoutTrim = stdoutTrim[:200]
+	}
+
+	stderrTrim := r.Stderr
+	if len(stderrTrim) > 200 {
+		stderrTrim = stderrTrim[:200]
+	}
+
+	return fmt.Sprintf("status: %s\nexit code: %d\nsignal: %d\nstdout: %s\nstderr:%s\ncpu:%d usec\nmemory:%d bytes\n", r.Status, r.ExitCode, r.Signal, stdoutTrim, stderrTrim, r.CPUTime, r.Memory)
+}
+
 func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool) (*Report, error) {
 	stdout, err := io.ReadAll(stdoutBuf)
 	if err != nil {
@@ -70,7 +84,7 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		Signal:   state.Sys().(syscall.WaitStatus).Signal(),
 		Stdout:   string(stdout),
 		Stderr:   string(stderr),
-		CPUTime:  stats.GetCPU().GetUserUsec(),
+		CPUTime:  stats.GetCPU().GetUsageUsec(),
 		Memory:   stats.GetMemory().GetMaxUsage(),
 	}, nil
 }
