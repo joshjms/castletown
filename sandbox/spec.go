@@ -10,7 +10,7 @@ import (
 	_ "github.com/opencontainers/cgroups/devices"
 )
 
-func createSpec(id string, cfg *Config, overlayfs *Overlayfs) (*specs.Spec, error) {
+func (s *Sandbox) createSpec() (*specs.Spec, error) {
 	slicePath, err := getSlicePath(os.Getuid())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slice path: %w", err)
@@ -25,9 +25,9 @@ func createSpec(id string, cfg *Config, overlayfs *Overlayfs) (*specs.Spec, erro
 			"userxattr",
 			"xino=off",
 			"index=off",
-			fmt.Sprintf("upperdir=%s", overlayfs.UpperDir),
-			fmt.Sprintf("lowerdir=%s", overlayfs.LowerDir),
-			fmt.Sprintf("workdir=%s", overlayfs.WorkDir),
+			fmt.Sprintf("upperdir=%s", s.overlayfs.UpperDir),
+			fmt.Sprintf("lowerdir=%s", s.overlayfs.LowerDir),
+			fmt.Sprintf("workdir=%s", s.overlayfs.WorkDir),
 		},
 	}
 
@@ -43,13 +43,13 @@ func createSpec(id string, cfg *Config, overlayfs *Overlayfs) (*specs.Spec, erro
 		Root: &specs.Root{
 			Readonly: false,
 		},
-		Hostname: "castletown",
+		Hostname: fmt.Sprintf("castletown-%s", s.id),
 		Mounts:   mounts,
 		Linux: &specs.Linux{
-			CgroupsPath: filepath.Join(slicePath, fmt.Sprintf("castletown-%s.scope", id), id),
-			Resources:   cgroupResources(cfg.Cgroup),
-			UIDMappings: uidMappings(cfg.UserNamespace),
-			GIDMappings: gidMappings(cfg.UserNamespace),
+			CgroupsPath: filepath.Join(slicePath, fmt.Sprintf("castletown-%s.scope", s.id), s.id),
+			Resources:   cgroupResources(s.config.Cgroup),
+			UIDMappings: uidMappings(s.config.UserNamespace),
+			GIDMappings: gidMappings(s.config.UserNamespace),
 			Namespaces: []specs.LinuxNamespace{
 				{
 					Type: specs.CgroupNamespace,

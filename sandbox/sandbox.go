@@ -41,7 +41,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	}
 	defer s.save()
 
-	spec, err := createSpec(s.id, s.config, overlayfs)
+	spec, err := s.createSpec()
 	if err != nil {
 		return nil, fmt.Errorf("error creating oci spec: %w", err)
 	}
