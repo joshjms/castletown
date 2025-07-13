@@ -62,3 +62,17 @@ func TestSandboxMemoryLimitExceeded(t *testing.T) {
 
 	tc.Run(t)
 }
+
+func TestSandboxFork(t *testing.T) {
+	Init()
+
+	expectedStatus := STATUS_OK
+
+	tc := Testcase{
+		File:           "test_files/fork.cpp",
+		ExpectedStatus: &expectedStatus,
+		TimeLimitMs:    1000,
+	}
+
+	tc.Run(t)
+}

@@ -101,7 +101,7 @@ func (tc *Testcase) Run(t *testing.T) {
 			GIDMapStart: 100000,
 			GIDMapCount: 65534,
 		},
-		TimeLimitMs: 1000,
+		TimeLimitMs: tc.TimeLimitMs,
 		Cgroup: &CgroupConfig{
 			CpuQuota:  100000,
 			Memory:    256 * 1024 * 1024,
