@@ -58,6 +58,8 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		status = STATUS_TIME_LIMIT_EXCEEDED
 	case stats.GetMemory().GetMaxUsage() > uint64(s.config.Cgroup.Memory):
 		status = STATUS_MEMORY_LIMIT_EXCEEDED
+	case state.ExitCode() != 0:
+		status = STATUS_RUNTIME_ERROR
 	default:
 		status = STATUS_OK
 	}
