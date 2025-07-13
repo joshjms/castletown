@@ -44,6 +44,20 @@ func (tc *Testcase) Run(t *testing.T) {
 			CpuQuota: 100000,
 			Memory:   512 * 1024 * 1024,
 		},
+		Rlimit: &RlimitConfig{
+			Core: &Rlimit{
+				Hard: 0,
+				Soft: 0,
+			},
+			Fsize: &Rlimit{
+				Hard: 1 * 1024 * 1024,
+				Soft: 1 * 1024 * 1024,
+			},
+			NoFile: &Rlimit{
+				Hard: 64,
+				Soft: 64,
+			},
+		},
 		Copy: []File{
 			{
 				Src: tc.File,

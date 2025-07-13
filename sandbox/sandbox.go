@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opencontainers/runc/libcontainer"
+	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
@@ -81,6 +82,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		Stdin:           &stdinBuf,
 		Stdout:          &stdoutBuf,
 		Stderr:          &stderrBuf,
+		Rlimits:         getRlimits(s.config.Rlimit),
 		Init:            true,
 	}
 
@@ -104,4 +106,38 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	processFinished <- struct{}{}
 
 	return s.makeReport(&stdoutBuf, &stderrBuf, state, timeLimitExceeded)
+}
+
+func getRlimits(cfg *RlimitConfig) []configs.Rlimit {
+	if cfg == nil {
+		return nil
+	}
+
+	var rlimits []configs.Rlimit
+
+	if cfg.Core != nil {
+		rlimits = append(rlimits, configs.Rlimit{
+			Type: unix.RLIMIT_CORE,
+			Hard: cfg.Core.Hard,
+			Soft: cfg.Core.Soft,
+		})
+	}
+
+	if cfg.Fsize != nil {
+		rlimits = append(rlimits, configs.Rlimit{
+			Type: unix.RLIMIT_FSIZE,
+			Hard: cfg.Fsize.Hard,
+			Soft: cfg.Fsize.Soft,
+		})
+	}
+
+	if cfg.NoFile != nil {
+		rlimits = append(rlimits, configs.Rlimit{
+			Type: unix.RLIMIT_NOFILE,
+			Hard: cfg.NoFile.Hard,
+			Soft: cfg.NoFile.Soft,
+		})
+	}
+
+	return rlimits
 }

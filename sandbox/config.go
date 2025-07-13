@@ -39,9 +39,9 @@ type CgroupConfig struct {
 }
 
 type RlimitConfig struct {
-	Core   Rlimit
-	Fsize  Rlimit
-	NoFile Rlimit
+	Core   *Rlimit
+	Fsize  *Rlimit
+	NoFile *Rlimit
 }
 
 type Rlimit struct {
