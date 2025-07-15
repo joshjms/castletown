@@ -68,7 +68,7 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 	var status Status
 
 	switch {
-	case timeLimitExceeded:
+	case timeLimitExceeded || stats.GetCPU().GetUsageUsec() > uint64(s.config.TimeLimitMs)*1000:
 		status = STATUS_TIME_LIMIT_EXCEEDED
 	case stats.GetMemory().GetMaxUsage() > uint64(s.config.Cgroup.Memory):
 		status = STATUS_MEMORY_LIMIT_EXCEEDED

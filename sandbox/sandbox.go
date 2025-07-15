@@ -96,7 +96,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	go func() {
 		select {
 		case <-processFinished:
-		case <-time.After(time.Duration(s.config.TimeLimitMs) * time.Millisecond):
+		case <-time.After(time.Duration(s.config.TimeLimitMs) * time.Millisecond * 3):
 			timeLimitExceeded = true
 			container.Signal(unix.SIGKILL)
 		}
