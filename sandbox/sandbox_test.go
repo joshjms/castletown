@@ -2,6 +2,8 @@ package sandbox
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSandboxAdd(t *testing.T) {
@@ -75,4 +77,34 @@ func TestSandboxFork(t *testing.T) {
 	}
 
 	tc.Run(t)
+}
+
+func TestSandboxRusageConsistency(t *testing.T) {
+	Init()
+
+	expectedStatus := STATUS_OK
+
+	tc := Testcase{
+		File:           "test_files/random.cpp",
+		ExpectedStatus: &expectedStatus,
+		TimeLimitMs:    1000,
+	}
+
+	var minCpuUsage, maxCpuUsage uint64
+
+	for i := 0; i < 10; i++ {
+		report := tc.Run(t)
+
+		if i == 0 {
+			minCpuUsage = report.CPUTime
+			maxCpuUsage = report.CPUTime
+
+			continue
+		}
+
+		minCpuUsage = min(minCpuUsage, report.CPUTime)
+		maxCpuUsage = max(maxCpuUsage, report.CPUTime)
+	}
+
+	require.Less(t, maxCpuUsage-minCpuUsage, uint64(10000), "cpu usage inconsistent")
 }

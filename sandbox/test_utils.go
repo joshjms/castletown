@@ -19,7 +19,7 @@ type Testcase struct {
 	TimeLimitMs int64
 }
 
-func (tc *Testcase) Run(t *testing.T) {
+func (tc *Testcase) Run(t *testing.T) *Report {
 	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	compileConfig := &Config{
@@ -103,9 +103,11 @@ func (tc *Testcase) Run(t *testing.T) {
 		},
 		TimeLimitMs: tc.TimeLimitMs,
 		Cgroup: &CgroupConfig{
-			CpuQuota:  100000,
-			Memory:    256 * 1024 * 1024,
-			PidsLimit: 1,
+			CpuQuota:   100000,
+			Memory:     256 * 1024 * 1024,
+			PidsLimit:  1,
+			CpusetCpus: "0",
+			CpusetMems: "0",
 		},
 		Copy: []File{
 			{
@@ -129,4 +131,6 @@ func (tc *Testcase) Run(t *testing.T) {
 	if tc.ExpectedOutput != nil {
 		require.Equal(t, *tc.ExpectedOutput, execReport.Stdout, "output != expectedOutput")
 	}
+
+	return execReport
 }
