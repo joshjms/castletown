@@ -17,6 +17,7 @@ const (
 	STATUS_OUTPUT_LIMIT_EXCEEDED Status = "OUTPUT_LIMIT_EXCEEDED"
 	STATUS_TERMINATED            Status = "TERMINATED"
 	STATUS_UNKNOWN               Status = "UNKNOWN"
+	STATUS_SKIPPED               Status = "SKIPPED"
 )
 
 type Report struct {

@@ -17,25 +17,26 @@ type Sandbox struct {
 	id     string
 	config *Config
 
-	spec      *specs.Spec
-	overlayfs *Overlayfs
+	spec         *specs.Spec
+	overlayfs    *Overlayfs
+	overlayfsDir string
 }
 
-func NewSandbox(id string, cfg *Config) *Sandbox {
+func NewSandbox(id string, cfg *Config, overlayfsDir string) *Sandbox {
 	return &Sandbox{
-		id:     id,
-		config: cfg,
+		id:           id,
+		config:       cfg,
+		overlayfsDir: overlayfsDir,
 	}
 }
 
 // Run runs a command inside the sandbox and returns a Report
 func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
-	overlayfs, err := s.prepare()
+	err := s.prepareOverlayfs()
 	if err != nil {
 		return nil, fmt.Errorf("error preparing rootfs: %w", err)
 	}
 	defer s.destroy()
-	s.overlayfs = overlayfs
 
 	if err := s.copy(); err != nil {
 		return nil, fmt.Errorf("error copying files into sandbox: %w", err)
