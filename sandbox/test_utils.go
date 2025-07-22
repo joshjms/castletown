@@ -3,6 +3,7 @@ package sandbox
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -72,7 +73,8 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 		},
 	}
 
-	compileSandbox := NewSandbox(uuid.New().String(), compileConfig)
+	id := uuid.New().String()
+	compileSandbox := NewSandbox(id, compileConfig, filepath.Join("/tmp", id))
 	ctx := context.Background()
 
 	compileReport, err := compileSandbox.Run(ctx)
@@ -117,7 +119,8 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 		},
 	}
 
-	execSandbox := NewSandbox(uuid.New().String(), execConfig)
+	id = uuid.NewString()
+	execSandbox := NewSandbox(id, execConfig, filepath.Join("/tmp", id))
 	ctx = context.Background()
 
 	execReport, err := execSandbox.Run(ctx)
