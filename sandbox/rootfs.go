@@ -22,8 +22,14 @@ func (s *Sandbox) prepareOverlayfs() error {
 		return fmt.Errorf("error mkdir upperdir: %w", err)
 	}
 
-	if err := os.MkdirAll(filepath.Join(upperDir, "box"), 0777); err != nil {
+	boxDir := filepath.Join(upperDir, "box")
+
+	if err := os.MkdirAll(boxDir, 0777); err != nil {
 		return fmt.Errorf("error mkdir writeable box directory: %w", err)
+	}
+
+	if err := os.Chmod(boxDir, 0777|os.ModeSticky); err != nil {
+		return fmt.Errorf("error chmod on box dir: %w", err)
 	}
 
 	workDir := filepath.Join(fsDir, "work")
