@@ -21,6 +21,9 @@ type Testcase struct {
 }
 
 func (tc *Testcase) Run(t *testing.T) *Report {
+	m, err := NewManager()
+	require.NoError(t, err, "failed to create manager: %v", err)
+
 	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	compileConfig := &Config{
@@ -74,7 +77,8 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 	}
 
 	id := uuid.New().String()
-	compileSandbox := NewSandbox(id, compileConfig, filepath.Join("/tmp", id))
+	compileSandbox, err := m.NewSandbox(id, compileConfig, filepath.Join("/tmp", id))
+	require.NoError(t, err, "failed to create compile sandbox: %v", err)
 	ctx := context.Background()
 
 	compileReport, err := compileSandbox.Run(ctx)
@@ -120,7 +124,8 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 	}
 
 	id = uuid.NewString()
-	execSandbox := NewSandbox(id, execConfig, filepath.Join("/tmp", id))
+	execSandbox, err := m.NewSandbox(id, execConfig, filepath.Join("/tmp", id))
+	require.NoError(t, err, "failed to create exec sandbox: %v", err)
 	ctx = context.Background()
 
 	execReport, err := execSandbox.Run(ctx)

@@ -22,14 +22,6 @@ type Sandbox struct {
 	overlayfsDir string
 }
 
-func NewSandbox(id string, cfg *Config, overlayfsDir string) *Sandbox {
-	return &Sandbox{
-		id:           id,
-		config:       cfg,
-		overlayfsDir: overlayfsDir,
-	}
-}
-
 // Run runs a command inside the sandbox and returns a Report
 func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	err := s.prepareOverlayfs()

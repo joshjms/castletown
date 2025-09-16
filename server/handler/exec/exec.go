@@ -41,14 +41,17 @@ type ExecHandler struct {
 	FilesDir        string
 	ImagesDir       string
 	LibcontainerDir string
+
+	m *sandbox.Manager
 }
 
-func NewExecHandler(overlayfsDir, filesDir, imagesDir, libcontainerDir string) *ExecHandler {
+func NewExecHandler(overlayfsDir, filesDir, imagesDir, libcontainerDir string, manager *sandbox.Manager) *ExecHandler {
 	return &ExecHandler{
 		OverlayfsDir:    overlayfsDir,
 		FilesDir:        filesDir,
 		ImagesDir:       imagesDir,
 		LibcontainerDir: libcontainerDir,
+		m:               manager,
 	}
 }
 
@@ -82,7 +85,7 @@ func (h *ExecHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	reports := make(Response, len(req.Steps))
 
 	for i, process := range req.Steps {
-		report, err := handleProcess(r.Context(), process, h.OverlayfsDir, filesDir, h.ImagesDir)
+		report, err := handleProcess(r.Context(), h.m, process, h.OverlayfsDir, filesDir, h.ImagesDir)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot handle process: %v", err), http.StatusInternalServerError)
 			return
@@ -100,7 +103,7 @@ func (h *ExecHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write(reportsJson)
 }
 
-func handleProcess(ctx context.Context, process Process, overlayfsDir, filesDir, imageDir string) (*sandbox.Report, error) {
+func handleProcess(ctx context.Context, manager *sandbox.Manager, process Process, overlayfsDir, filesDir, imageDir string) (*sandbox.Report, error) {
 	rootfsImageDir, err := getRootfsDir(imageDir, process.Image)
 	if err != nil {
 		return nil, fmt.Errorf("error getting rootfs directory: %w", err)
@@ -148,11 +151,14 @@ func handleProcess(ctx context.Context, process Process, overlayfsDir, filesDir,
 		Save: saveFiles,
 	}
 
-	sandbox := sandbox.NewSandbox(
+	sandbox, err := manager.NewSandbox(
 		uuid.NewString(),
 		sandboxConfig,
 		overlayfsDir,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sandbox: %w", err)
+	}
 
 	return sandbox.Run(ctx)
 }

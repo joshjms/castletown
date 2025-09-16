@@ -49,13 +49,17 @@ Don't forget, I'm with you in the dark`,
 }
 
 func serverHandler(port int, overlayfsDir, filesDir, imagesDir, libcontainerDir string) {
-	s := server.NewServer(
+	s, err := server.NewServer(
 		port,
 		overlayfsDir,
 		filesDir,
 		imagesDir,
 		libcontainerDir,
 	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating server: %v\n", err)
+		os.Exit(1)
+	}
 	s.Init()
 	s.Start()
 }
