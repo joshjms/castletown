@@ -8,48 +8,36 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/joshjms/castletown/config"
 	"github.com/joshjms/castletown/sandbox"
 	"github.com/joshjms/castletown/server/handler/exec"
 )
 
 type Server struct {
 	srv *http.Server
-
-	Port int
-
-	OverlayfsDir    string
-	FilesDir        string
-	ImagesDir       string
-	LibcontainerDir string
-
-	Manager *sandbox.Manager
+	m   *sandbox.Manager
 }
 
-func NewServer(port int, overlayfsDir, filesDir, imagesDir, libcontainerDir string) (*Server, error) {
+func NewServer() (*Server, error) {
 	m, err := sandbox.NewManager()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
-		Manager:         m,
-		Port:            port,
-		OverlayfsDir:    overlayfsDir,
-		FilesDir:        filesDir,
-		ImagesDir:       imagesDir,
-		LibcontainerDir: libcontainerDir,
+		m: m,
 	}, nil
 }
 
 func (s *Server) Init() {
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.Port),
+		Addr:    fmt.Sprintf(":%d", config.Port),
 		Handler: http.DefaultServeMux,
 	}
 }
 
 func (s *Server) Start() {
-	execHandler := exec.NewExecHandler(s.OverlayfsDir, s.FilesDir, s.ImagesDir, s.LibcontainerDir, s.Manager)
+	execHandler := exec.NewExecHandler(s.m)
 
 	http.HandleFunc("/exec", execHandler.Handler)
 

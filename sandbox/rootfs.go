@@ -4,60 +4,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/joshjms/castletown/config"
 )
 
-type Overlayfs struct {
-	LowerDir string
-	UpperDir string
-	WorkDir  string
-}
-
 func (s *Sandbox) prepareOverlayfs() error {
-	fsDir := filepath.Join(s.overlayfsDir, s.id)
+	upperDir := filepath.Join(config.OverlayFSDir, fmt.Sprintf("sandbox-%s", s.id), "upper")
+	workDir := filepath.Join(config.OverlayFSDir, fmt.Sprintf("sandbox-%s", s.id), "work")
 
-	lowerDir := s.config.RootfsImageDir
-
-	upperDir := filepath.Join(fsDir, "upper")
 	if err := os.MkdirAll(upperDir, 0755); err != nil {
-		return fmt.Errorf("error mkdir upperdir: %w", err)
-	}
-
-	boxDir := filepath.Join(upperDir, "box")
-
-	if err := os.MkdirAll(boxDir, 0777); err != nil {
-		return fmt.Errorf("error mkdir writeable box directory: %w", err)
-	}
-
-	if err := os.Chmod(boxDir, 0777|os.ModeSticky); err != nil {
-		return fmt.Errorf("error chmod on box dir: %w", err)
-	}
-
-	workDir := filepath.Join(fsDir, "work")
-	if err := os.MkdirAll(workDir, 0755); err != nil {
-		return fmt.Errorf("error mkdir workdir: %w", err)
-	}
-
-	if err := os.Chown(upperDir, int(s.config.UserNamespace.RootUID), int(s.config.UserNamespace.RootGID)); err != nil {
-		return fmt.Errorf("error chown upperdir: %w", err)
-	}
-
-	if err := os.Chown(workDir, int(s.config.UserNamespace.RootUID), int(s.config.UserNamespace.RootGID)); err != nil {
-		return fmt.Errorf("error chown workdir: %w", err)
-	}
-
-	s.overlayfs = &Overlayfs{
-		LowerDir: lowerDir,
-		UpperDir: upperDir,
-		WorkDir:  workDir,
-	}
-
-	return nil
-}
-
-func (s *Sandbox) destroy() error {
-	fsDir := filepath.Join(s.overlayfsDir, s.id)
-	if err := os.RemoveAll(fsDir); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (s *Sandbox) getLowerDir() string {
+	return s.config.RootfsImageDir
+}
+
+func (s *Sandbox) getUpperDir() string {
+	return filepath.Join(config.OverlayFSDir, fmt.Sprintf("sandbox-%s", s.id), "upper")
+}
+
+func (s *Sandbox) getWorkDir() string {
+	return filepath.Join(config.OverlayFSDir, fmt.Sprintf("sandbox-%s", s.id), "work")
 }

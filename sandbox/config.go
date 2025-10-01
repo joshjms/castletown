@@ -8,25 +8,23 @@ type Config struct {
 	Cwd   string
 	Env   []string
 
-	ContainerUID  int
-	ContainerGID  int
 	UserNamespace *UserNamespaceConfig
 
 	TimeLimitMs int64
 	Cgroup      *CgroupConfig
 	Rlimit      *RlimitConfig
 
-	Copy []File
-	Save []File
+	BoxDir string
+	Files  []File
 }
 
 type UserNamespaceConfig struct {
-	RootUID     uint32
-	UIDMapStart uint32
-	UIDMapCount uint32
-	RootGID     uint32
-	GIDMapStart uint32
-	GIDMapCount uint32
+	HostUID      uint32
+	HostGID      uint32
+	ContainerUID uint32
+	ContainerGID uint32
+	UIDMapCount  uint32
+	GIDMapCount  uint32
 }
 
 type CgroupConfig struct {
@@ -50,6 +48,7 @@ type Rlimit struct {
 }
 
 type File struct {
-	Src string
-	Dst string
+	Src     string
+	Content string
+	Dst     string
 }

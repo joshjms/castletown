@@ -2,11 +2,14 @@ package sandbox
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/joshjms/castletown/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,24 +27,25 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 	m, err := NewManager()
 	require.NoError(t, err, "failed to create manager: %v", err)
 
+	id := uuid.NewString()
+	rootFileDir := filepath.Join(config.StorageDir, id)
+	defer os.RemoveAll(rootFileDir)
+
+	compileFileDir := filepath.Join(rootFileDir, "proc-0")
+	execFileDir := filepath.Join(rootFileDir, "proc-1")
+
+	os.MkdirAll(compileFileDir, 0755)
+	os.MkdirAll(execFileDir, 0755)
+
 	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
 
 	compileConfig := &Config{
 		RootfsImageDir: rootfsDir,
-		Args:           []string{"g++", "main.cpp", "-o", "main"},
+		BoxDir:         compileFileDir,
+		Args:           []string{"g++", "-o", "main", "main.cpp"},
 		Cwd:            "/box",
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		},
-		ContainerUID: 65534,
-		ContainerGID: 65534,
-		UserNamespace: &UserNamespaceConfig{
-			RootUID:     uint32(os.Getuid()),
-			UIDMapStart: 100000,
-			UIDMapCount: 65534,
-			RootGID:     uint32(os.Getgid()),
-			GIDMapStart: 100000,
-			GIDMapCount: 65534,
 		},
 		TimeLimitMs: 10000,
 		Cgroup: &CgroupConfig{
@@ -54,58 +58,43 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 				Soft: 0,
 			},
 			Fsize: &Rlimit{
-				Hard: 1 * 1024 * 1024,
-				Soft: 1 * 1024 * 1024,
+				Hard: 1024 * 1024 * 1024,
+				Soft: 1024 * 1024 * 1024,
 			},
 			NoFile: &Rlimit{
 				Hard: 64,
 				Soft: 64,
 			},
 		},
-		Copy: []File{
+		Files: []File{
 			{
 				Src: tc.File,
-				Dst: "/box/main.cpp",
-			},
-		},
-		Save: []File{
-			{
-				Src: "/box/main",
-				Dst: "./main",
+				Dst: filepath.Join(compileFileDir, "main.cpp"),
 			},
 		},
 	}
 
-	id := uuid.New().String()
-	compileSandbox, err := m.NewSandbox(id, compileConfig, filepath.Join("/tmp", id))
-	require.NoError(t, err, "failed to create compile sandbox: %v", err)
+	compileSandbox, err := m.NewSandbox(fmt.Sprintf("%s-%d", id, 0), compileConfig)
+	defer require.NoError(t, err, "failed to create compile sandbox: %v", err)
+	defer m.DestroySandbox(compileSandbox.GetId())
+
 	ctx := context.Background()
-
+	compileStartTime := time.Now()
 	compileReport, err := compileSandbox.Run(ctx)
-	defer os.Remove("main")
-
 	require.NoError(t, err, "failed to compile code")
-	require.Equal(t, STATUS_OK, compileReport.Status, "status not ok")
+	compileElapsed := time.Since(compileStartTime)
+	t.Logf("Compile took %v", compileElapsed)
 
-	t.Logf("%v\n", compileReport)
+	require.Equal(t, STATUS_OK, compileReport.Status, "compile status not ok")
 
 	execConfig := &Config{
 		RootfsImageDir: rootfsDir,
+		BoxDir:         execFileDir,
 		Args:           []string{"./main"},
 		Stdin:          tc.Stdin,
 		Cwd:            "/box",
 		Env: []string{
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		},
-		ContainerUID: 65534,
-		ContainerGID: 65534,
-		UserNamespace: &UserNamespaceConfig{
-			RootUID:     uint32(os.Getuid()),
-			UIDMapStart: 100000,
-			UIDMapCount: 65534,
-			RootGID:     uint32(os.Getgid()),
-			GIDMapStart: 100000,
-			GIDMapCount: 65534,
 		},
 		TimeLimitMs: tc.TimeLimitMs,
 		Cgroup: &CgroupConfig{
@@ -115,21 +104,23 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 			CpusetCpus: "0",
 			CpusetMems: "0",
 		},
-		Copy: []File{
+		Files: []File{
 			{
-				Src: "main",
-				Dst: "/box/main",
+				Src: filepath.Join(compileFileDir, "main"),
+				Dst: filepath.Join(execFileDir, "main"),
 			},
 		},
 	}
 
-	id = uuid.NewString()
-	execSandbox, err := m.NewSandbox(id, execConfig, filepath.Join("/tmp", id))
+	execSandbox, err := m.NewSandbox(fmt.Sprintf("%s-%d", id, 1), execConfig)
+	defer m.DestroySandbox(execSandbox.GetId())
 	require.NoError(t, err, "failed to create exec sandbox: %v", err)
-	ctx = context.Background()
 
+	ctx = context.Background()
+	execStartTime := time.Now()
 	execReport, err := execSandbox.Run(ctx)
-	t.Logf("%v\n", execReport)
+	execElapsed := time.Since(execStartTime)
+	t.Logf("Execution took %v", execElapsed)
 	require.NoError(t, err, "failed to execute code")
 
 	if tc.ExpectedStatus != nil {

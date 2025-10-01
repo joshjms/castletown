@@ -2,7 +2,6 @@ package sandbox
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -11,29 +10,12 @@ import (
 )
 
 func (s *Sandbox) createSpec() (*specs.Spec, error) {
-	slicePath, err := getSlicePath(os.Getuid())
+	slicePath, err := getSlicePath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slice path: %w", err)
 	}
 
-	rootfsMount := specs.Mount{
-		Destination: "/",
-		Type:        "overlay",
-		Source:      "overlay",
-		Options: []string{
-			"rw",
-			"userxattr",
-			"xino=off",
-			"index=off",
-			fmt.Sprintf("upperdir=%s", s.overlayfs.UpperDir),
-			fmt.Sprintf("lowerdir=%s", s.overlayfs.LowerDir),
-			fmt.Sprintf("workdir=%s", s.overlayfs.WorkDir),
-		},
-	}
-
-	mounts := []specs.Mount{}
-	mounts = append(mounts, rootfsMount)
-	mounts = append(mounts, defaultMounts()...)
+	mounts := s.getMounts()
 
 	spec := &specs.Spec{
 		Version: specs.Version,
@@ -48,8 +30,20 @@ func (s *Sandbox) createSpec() (*specs.Spec, error) {
 		Linux: &specs.Linux{
 			CgroupsPath: filepath.Join(slicePath, fmt.Sprintf("castletown-%s.scope", s.id), s.id),
 			Resources:   cgroupResources(s.config.Cgroup),
-			UIDMappings: uidMappings(s.config.UserNamespace),
-			GIDMappings: gidMappings(s.config.UserNamespace),
+			UIDMappings: []specs.LinuxIDMapping{
+				{
+					HostID:      s.config.UserNamespace.HostUID,
+					ContainerID: s.config.UserNamespace.ContainerUID,
+					Size:        s.config.UserNamespace.UIDMapCount,
+				},
+			},
+			GIDMappings: []specs.LinuxIDMapping{
+				{
+					HostID:      s.config.UserNamespace.HostGID,
+					ContainerID: s.config.UserNamespace.ContainerGID,
+					Size:        s.config.UserNamespace.GIDMapCount,
+				},
+			},
 			Namespaces: []specs.LinuxNamespace{
 				{
 					Type: specs.CgroupNamespace,
@@ -99,6 +93,61 @@ func (s *Sandbox) createSpec() (*specs.Spec, error) {
 	}
 
 	return spec, nil
+}
+
+func (s *Sandbox) getMounts() []specs.Mount {
+	mounts := make([]specs.Mount, 0)
+
+	rootfsMount := specs.Mount{
+		Destination: "/",
+		Type:        "overlay",
+		Source:      "overlay",
+		Options: []string{
+			"rw",
+			"userxattr",
+			"xino=off",
+			"index=off",
+			fmt.Sprintf("upperdir=%s", s.getUpperDir()),
+			fmt.Sprintf("lowerdir=%s", s.getLowerDir()),
+			fmt.Sprintf("workdir=%s", s.getWorkDir()),
+		},
+	}
+
+	mounts = append(mounts, rootfsMount)
+
+	bindMount := specs.Mount{
+		Destination: "/box",
+		Type:        "bind",
+		Source:      s.config.BoxDir,
+		Options: []string{
+			"rbind",
+			"rw",
+			"exec",
+			"nosuid",
+			"nodev",
+			"ridmap",
+		},
+		UIDMappings: []specs.LinuxIDMapping{
+			{
+				ContainerID: 0,
+				HostID:      s.config.UserNamespace.HostUID,
+				Size:        1,
+			},
+		},
+		GIDMappings: []specs.LinuxIDMapping{
+			{
+				ContainerID: 0,
+				HostID:      s.config.UserNamespace.HostGID,
+				Size:        1,
+			},
+		},
+	}
+
+	mounts = append(mounts, bindMount)
+
+	mounts = append(mounts, defaultMounts()...)
+
+	return mounts
 }
 
 func defaultMounts() []specs.Mount {
@@ -208,35 +257,5 @@ func cgroupResources(cfg *CgroupConfig) *specs.LinuxResources {
 		CPU:    cgCPU,
 		Memory: cgMemory,
 		Pids:   cgPids,
-	}
-}
-
-func uidMappings(cfg *UserNamespaceConfig) []specs.LinuxIDMapping {
-	return []specs.LinuxIDMapping{
-		{
-			ContainerID: 0,
-			HostID:      cfg.RootUID,
-			Size:        1,
-		},
-		{
-			ContainerID: 1,
-			HostID:      cfg.UIDMapStart,
-			Size:        cfg.UIDMapCount,
-		},
-	}
-}
-
-func gidMappings(cfg *UserNamespaceConfig) []specs.LinuxIDMapping {
-	return []specs.LinuxIDMapping{
-		{
-			ContainerID: 0,
-			HostID:      cfg.RootUID,
-			Size:        1,
-		},
-		{
-			ContainerID: 1,
-			HostID:      cfg.GIDMapStart,
-			Size:        cfg.GIDMapCount,
-		},
 	}
 }

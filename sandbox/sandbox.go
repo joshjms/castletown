@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/joshjms/castletown/config"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/specconv"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )
 
@@ -17,9 +19,11 @@ type Sandbox struct {
 	id     string
 	config *Config
 
-	spec         *specs.Spec
-	overlayfs    *Overlayfs
-	overlayfsDir string
+	container *libcontainer.Container
+}
+
+func (s *Sandbox) GetId() string {
+	return s.id
 }
 
 // Run runs a command inside the sandbox and returns a Report
@@ -28,30 +32,27 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error preparing rootfs: %w", err)
 	}
-	defer s.destroy()
 
-	if err := s.copy(); err != nil {
-		return nil, fmt.Errorf("error copying files into sandbox: %w", err)
+	if err := s.prepareFiles(); err != nil {
+		return nil, fmt.Errorf("error preparing files: %w", err)
 	}
-	defer s.save()
 
 	spec, err := s.createSpec()
 	if err != nil {
 		return nil, fmt.Errorf("error creating oci spec: %w", err)
 	}
-	s.spec = spec
 
 	libcontainerConfig, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
 		UseSystemdCgroup: false,
-		Spec:             s.spec,
-		RootlessEUID:     true,
-		RootlessCgroups:  true,
+		Spec:             spec,
+		// RootlessEUID:     true,
+		// RootlessCgroups:  true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating libcontainer config: %w", err)
 	}
 
-	container, err := libcontainer.Create(LIBCONTAINER_ROOT, s.id, libcontainerConfig)
+	container, err := libcontainer.Create(config.LibcontainerDir, s.id, libcontainerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating container: %w", err)
 	}
@@ -68,8 +69,8 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	process := &libcontainer.Process{
 		Args:            s.config.Args,
 		Env:             s.config.Env,
-		UID:             s.config.ContainerUID,
-		GID:             s.config.ContainerGID,
+		UID:             0,
+		GID:             0,
 		Cwd:             s.config.Cwd,
 		NoNewPrivileges: &noNewPrivileges,
 		Stdin:           &stdinBuf,
@@ -133,4 +134,16 @@ func getRlimits(cfg *RlimitConfig) []configs.Rlimit {
 	}
 
 	return rlimits
+}
+
+func (s *Sandbox) Destroy() error {
+	if s.container != nil {
+		s.container.Destroy()
+	}
+
+	if err := os.RemoveAll(filepath.Join(config.OverlayFSDir, fmt.Sprintf("sandbox-%s", s.id))); err != nil {
+		return fmt.Errorf("error removing overlayfs dirs: %w", err)
+	}
+
+	return nil
 }

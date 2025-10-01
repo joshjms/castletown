@@ -1,8 +1,9 @@
 package allocator
 
 import (
-	"fmt"
 	"sync"
+
+	"github.com/joshjms/castletown/config"
 )
 
 const DEFAULT_SIZE uint32 = 65536
@@ -22,21 +23,9 @@ type Allocator struct {
 }
 
 func NewAllocator() (*Allocator, error) {
-	startUid, sizeU, err := getSubuid()
-	if err != nil {
-		return nil, err
-	}
-	startGid, sizeG, err := getSubgid()
-	if err != nil {
-		return nil, err
-	}
-
-	size := min(sizeU, sizeG)
-	if size < DEFAULT_SIZE {
-		return nil, fmt.Errorf("subuid/subgid size %d is less than default size %d", size, DEFAULT_SIZE)
-	}
-
-	maxContainers := int(size / DEFAULT_SIZE)
+	startUid := uint32(100000)
+	startGid := uint32(100000)
+	maxContainers := config.MaxConcurrency
 
 	ranges := make([]Range, maxContainers)
 	used := make([]bool, maxContainers)

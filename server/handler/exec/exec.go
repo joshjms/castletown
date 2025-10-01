@@ -5,54 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/joshjms/castletown/sandbox"
 )
 
-type Request struct {
-	Steps []Process
-	Files []File
-}
-
-type Process struct {
-	Image         string   `json:"image"`
-	Cmd           []string `json:"cmd"`
-	Stdin         string   `json:"stdin"`
-	MemoryLimitMB int64    `json:"memoryLimitMB"` // Memory limit in megabytes
-	TimeLimitMs   uint64   `json:"timeLimitMs"`   // Time limit in milliseconds
-	ProcLimit     int64    `json:"procLimit"`
-
-	Files   []string `json:"files"`
-	Persist []string `json:"persist"`
-}
-
-type File struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
-}
-
-type Response []*sandbox.Report
-
 type ExecHandler struct {
-	OverlayfsDir    string
-	FilesDir        string
-	ImagesDir       string
-	LibcontainerDir string
-
 	m *sandbox.Manager
 }
 
-func NewExecHandler(overlayfsDir, filesDir, imagesDir, libcontainerDir string, manager *sandbox.Manager) *ExecHandler {
-	return &ExecHandler{
-		OverlayfsDir:    overlayfsDir,
-		FilesDir:        filesDir,
-		ImagesDir:       imagesDir,
-		LibcontainerDir: libcontainerDir,
-		m:               manager,
-	}
+func NewExecHandler(m *sandbox.Manager) *ExecHandler {
+	return &ExecHandler{m: m}
 }
 
 func (h *ExecHandler) Handler(w http.ResponseWriter, r *http.Request) {
@@ -68,29 +31,12 @@ func (h *ExecHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.NewString()
-	filesDir := filepath.Join(h.FilesDir, id)
+	req.ID = uuid.NewString()
 
-	if err := os.MkdirAll(filesDir, 0755); err != nil {
-		http.Error(w, fmt.Sprintf("cannot create files directory: %v", err), http.StatusInternalServerError)
+	reports, err := h.handleRequest(r.Context(), req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error running processes: %v", err), http.StatusInternalServerError)
 		return
-	}
-	defer os.RemoveAll(filesDir)
-
-	if err := createFiles(filesDir, req.Files); err != nil {
-		http.Error(w, fmt.Sprintf("cannot create files: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	reports := make(Response, len(req.Steps))
-
-	for i, process := range req.Steps {
-		report, err := handleProcess(r.Context(), h.m, process, h.OverlayfsDir, filesDir, h.ImagesDir)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("cannot handle process: %v", err), http.StatusInternalServerError)
-			return
-		}
-		reports[i] = report
 	}
 
 	reportsJson, err := json.MarshalIndent(reports, "", "  ")
@@ -103,35 +49,70 @@ func (h *ExecHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	w.Write(reportsJson)
 }
 
-func handleProcess(ctx context.Context, manager *sandbox.Manager, process Process, overlayfsDir, filesDir, imageDir string) (*sandbox.Report, error) {
-	rootfsImageDir, err := getRootfsDir(imageDir, process.Image)
-	if err != nil {
-		return nil, fmt.Errorf("error getting rootfs directory: %w", err)
+func (h *ExecHandler) handleRequest(ctx context.Context, req Request) (Response, error) {
+	if len(req.Procs) == 0 {
+		return nil, fmt.Errorf("no processes specified")
 	}
 
-	copyFiles := getCopyFiles(filesDir, process.Files)
-	saveFiles := getSaveFiles(filesDir, process.Persist)
+	if err := verifyImages(req.Procs); err != nil {
+		return nil, fmt.Errorf("invalid images: %w", err)
+	}
 
-	sandboxConfig := &sandbox.Config{
-		RootfsImageDir: rootfsImageDir,
-		Args:           process.Cmd,
-		Stdin:          process.Stdin,
-		Cwd:            "/box",
-		Env:            []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"},
-		ContainerUID:   65534,
-		ContainerGID:   65534,
-		UserNamespace: &sandbox.UserNamespaceConfig{
-			RootUID:     uint32(os.Getuid()),
-			UIDMapStart: 100000,
-			UIDMapCount: 65534,
-			RootGID:     uint32(os.Getgid()),
-			GIDMapStart: 100000,
-			GIDMapCount: 65534,
+	prepareFileDirs(req.ID, req.Procs)
+	fileDeps, err := getFileDependencies(req.ID, req.Procs, req.Files)
+	if err != nil {
+		return nil, fmt.Errorf("error getting file dependencies: %w", err)
+	}
+
+	var reports Response
+
+	for i, proc := range req.Procs {
+		cfg := getDefaultConfig()
+		cfg.Args = proc.Cmd
+		cfg.RootfsImageDir = getImageDir(proc.Image)
+		cfg.BoxDir = getProcFileDir(req.ID, i)
+		cfg.Files = fileDeps[i]
+
+		if proc.TimeLimitMs > 0 {
+			cfg.TimeLimitMs = int64(proc.TimeLimitMs)
+		}
+		if proc.MemoryLimitMB > 0 {
+			cfg.Cgroup.Memory = int64(proc.MemoryLimitMB) * 1024 * 1024
+		}
+		cfg.Stdin = proc.Stdin
+
+		containerId := fmt.Sprintf("%s-%d", req.ID, i)
+		s, err := h.m.NewSandbox(containerId, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create sandbox for process %d: %v", i, err)
+		}
+		defer h.m.DestroySandbox(containerId)
+
+		report, err := s.Run(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error running process %d: %v", i, err)
+		}
+
+		reports = append(reports, *report)
+	}
+
+	return reports, nil
+}
+
+func getDefaultConfig() *sandbox.Config {
+	return &sandbox.Config{
+		Env: []string{
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		},
-		TimeLimitMs: int64(process.TimeLimitMs),
+		Cwd:         "/box",
+		TimeLimitMs: 1000,
 		Cgroup: &sandbox.CgroupConfig{
-			CpuQuota: 100000,
-			Memory:   process.MemoryLimitMB * 1024 * 1024,
+			CpuShares:  100000,
+			CpuQuota:   100000,
+			Memory:     256 * 1024 * 1024,
+			PidsLimit:  100,
+			CpusetCpus: "0",
+			CpusetMems: "0",
 		},
 		Rlimit: &sandbox.RlimitConfig{
 			Core: &sandbox.Rlimit{
@@ -147,18 +128,5 @@ func handleProcess(ctx context.Context, manager *sandbox.Manager, process Proces
 				Soft: 64,
 			},
 		},
-		Copy: copyFiles,
-		Save: saveFiles,
 	}
-
-	sandbox, err := manager.NewSandbox(
-		uuid.NewString(),
-		sandboxConfig,
-		overlayfsDir,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error creating sandbox: %w", err)
-	}
-
-	return sandbox.Run(ctx)
 }
