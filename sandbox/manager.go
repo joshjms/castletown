@@ -7,6 +7,8 @@ import (
 	"github.com/joshjms/castletown/sandbox/allocator"
 )
 
+var M *Manager
+
 type Manager struct {
 	sandboxes       map[string]*Sandbox
 	allocatedRanges map[string]int
@@ -16,17 +18,22 @@ type Manager struct {
 	mu sync.Mutex
 }
 
-func NewManager() (*Manager, error) {
+func NewManager() error {
 	alloc, err := allocator.NewAllocator()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Manager{
+	M = &Manager{
 		sandboxes:       make(map[string]*Sandbox),
 		allocatedRanges: make(map[string]int),
 		allocator:       alloc,
-	}, nil
+	}
+	return nil
+}
+
+func GetManager() *Manager {
+	return M
 }
 
 func (m *Manager) NewSandbox(id string, cfg *Config) (*Sandbox, error) {

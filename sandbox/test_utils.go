@@ -24,8 +24,8 @@ type Testcase struct {
 }
 
 func (tc *Testcase) Run(t *testing.T) *Report {
-	m, err := NewManager()
-	require.NoError(t, err, "failed to create manager: %v", err)
+	m := GetManager()
+	require.NotNil(t, m, "failed to get manager")
 
 	id := uuid.NewString()
 	rootFileDir := filepath.Join(config.StorageDir, id)

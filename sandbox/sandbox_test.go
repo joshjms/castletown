@@ -19,6 +19,8 @@ func TestMain(m *testing.M) {
 	Init()
 	config.UseDefaults()
 
+	NewManager()
+
 	files, err := os.ReadDir("test_files")
 	require.NoError(nil, err, "failed to read test files directory: %v", err)
 
@@ -44,8 +46,8 @@ func TestMain(m *testing.M) {
 func TestSandboxE2E(t *testing.T) {
 	Init()
 
-	m, err := NewManager()
-	require.NoError(t, err, "failed to create manager: %v", err)
+	m := GetManager()
+	require.NotNil(t, m, "failed to get manager")
 
 	id := uuid.NewString()
 	rootFileDir := filepath.Join(config.StorageDir, id)
