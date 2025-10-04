@@ -45,25 +45,25 @@ func (r Report) String() string {
 	return fmt.Sprintf("status: %s\nexit code: %d\nsignal: %d\nstdout: %s\nstderr:%s\ncpu:%d usec\nmemory:%d bytes\n", r.Status, r.ExitCode, r.Signal, stdoutTrim, stderrTrim, r.CPUTime, r.Memory)
 }
 
-func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool) (*Report, error) {
+func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool) (Report, error) {
 	stdout, err := io.ReadAll(stdoutBuf)
 	if err != nil {
-		return nil, fmt.Errorf("error reading stdout: %w", err)
+		return Report{}, fmt.Errorf("error reading stdout: %w", err)
 	}
 
 	stderr, err := io.ReadAll(stderrBuf)
 	if err != nil {
-		return nil, fmt.Errorf("error reading stderr: %w", err)
+		return Report{}, fmt.Errorf("error reading stderr: %w", err)
 	}
 
 	cgManager, err := loadCgroup(s.id)
 	if err != nil {
-		return nil, fmt.Errorf("error loading cgroup: %w", err)
+		return Report{}, fmt.Errorf("error loading cgroup: %w", err)
 	}
 
 	stats, err := cgManager.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("error getting cgroup stats: %w", err)
+		return Report{}, fmt.Errorf("error getting cgroup stats: %w", err)
 	}
 
 	var status Status
@@ -79,7 +79,7 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		status = STATUS_OK
 	}
 
-	return &Report{
+	return Report{
 		Status:   status,
 		ExitCode: state.ExitCode(),
 		Signal:   state.Sys().(syscall.WaitStatus).Signal(),

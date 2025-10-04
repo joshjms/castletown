@@ -7,7 +7,7 @@ import (
 	"github.com/joshjms/castletown/sandbox/allocator"
 )
 
-var M *Manager
+var m *Manager
 
 type Manager struct {
 	sandboxes       map[string]*Sandbox
@@ -24,7 +24,7 @@ func NewManager() error {
 		return err
 	}
 
-	M = &Manager{
+	m = &Manager{
 		sandboxes:       make(map[string]*Sandbox),
 		allocatedRanges: make(map[string]int),
 		allocator:       alloc,
@@ -33,7 +33,7 @@ func NewManager() error {
 }
 
 func GetManager() *Manager {
-	return M
+	return m
 }
 
 func (m *Manager) NewSandbox(id string, cfg *Config) (*Sandbox, error) {

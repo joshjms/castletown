@@ -27,19 +27,19 @@ func (s *Sandbox) GetId() string {
 }
 
 // Run runs a command inside the sandbox and returns a Report
-func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
+func (s *Sandbox) Run(ctx context.Context) (Report, error) {
 	err := s.prepareOverlayfs()
 	if err != nil {
-		return nil, fmt.Errorf("error preparing rootfs: %w", err)
+		return Report{}, fmt.Errorf("error preparing rootfs: %w", err)
 	}
 
 	if err := s.prepareFiles(); err != nil {
-		return nil, fmt.Errorf("error preparing files: %w", err)
+		return Report{}, fmt.Errorf("error preparing files: %w", err)
 	}
 
 	spec, err := s.createSpec()
 	if err != nil {
-		return nil, fmt.Errorf("error creating oci spec: %w", err)
+		return Report{}, fmt.Errorf("error creating oci spec: %w", err)
 	}
 
 	libcontainerConfig, err := specconv.CreateLibcontainerConfig(&specconv.CreateOpts{
@@ -49,12 +49,12 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 		// RootlessCgroups:  true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error creating libcontainer config: %w", err)
+		return Report{}, fmt.Errorf("error creating libcontainer config: %w", err)
 	}
 
 	container, err := libcontainer.Create(config.LibcontainerDir, s.id, libcontainerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error creating container: %w", err)
+		return Report{}, fmt.Errorf("error creating container: %w", err)
 	}
 	defer container.Destroy()
 
@@ -81,7 +81,7 @@ func (s *Sandbox) Run(ctx context.Context) (*Report, error) {
 	}
 
 	if err := container.Run(process); err != nil {
-		return nil, fmt.Errorf("error running container: %w", err)
+		return Report{}, fmt.Errorf("error running container: %w", err)
 	}
 
 	processFinished := make(chan interface{}, 1)

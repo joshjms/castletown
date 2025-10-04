@@ -1,16 +1,22 @@
 package job
 
+var jp *JobPool
+
 type JobPool struct {
-	Jobs map[string]Job
+	Jobs map[string]*Job
 }
 
-func NewJobPool() *JobPool {
-	return &JobPool{
-		Jobs: make(map[string]Job),
+func NewJobPool() {
+	jp = &JobPool{
+		Jobs: make(map[string]*Job),
 	}
 }
 
-func (jp *JobPool) AddOrAppendJob(job Job) {
+func GetJobPool() *JobPool {
+	return jp
+}
+
+func (jp *JobPool) AddOrAppendJob(job *Job) {
 	if existingJob, exists := jp.Jobs[job.ID]; exists {
 		existingJob.Files = append(existingJob.Files, job.Files...)
 		existingJob.Procs = append(existingJob.Procs, job.Procs...)

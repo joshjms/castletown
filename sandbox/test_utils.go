@@ -23,7 +23,7 @@ type Testcase struct {
 	TimeLimitMs int64
 }
 
-func (tc *Testcase) Run(t *testing.T) *Report {
+func (tc *Testcase) Run(t *testing.T) Report {
 	m := GetManager()
 	require.NotNil(t, m, "failed to get manager")
 
@@ -37,7 +37,7 @@ func (tc *Testcase) Run(t *testing.T) *Report {
 	os.MkdirAll(compileFileDir, 0755)
 	os.MkdirAll(execFileDir, 0755)
 
-	rootfsDir := "/tmp/_tmp_gcc_15-bookworm"
+	rootfsDir := "/tmp/castletown/images/gcc-15-bookworm"
 
 	compileConfig := &Config{
 		RootfsImageDir: rootfsDir,
