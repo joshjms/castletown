@@ -8,7 +8,7 @@ require (
 	github.com/opencontainers/cgroups v0.0.3
 	github.com/opencontainers/runc v1.3.0
 	github.com/opencontainers/runtime-spec v1.2.1
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sys v0.30.0
 )
@@ -32,7 +32,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/vishvananda/netlink v1.3.0 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	golang.org/x/net v0.35.0 // indirect

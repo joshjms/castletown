@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"github.com/joshjms/castletown/config"
+	"github.com/joshjms/castletown/job"
+	"github.com/joshjms/castletown/sandbox"
 	"github.com/joshjms/castletown/server"
 	"github.com/spf13/cobra"
 )
@@ -75,12 +77,18 @@ func RunServer() {
 		os.Exit(1)
 	}
 
+	job.NewJobPool()
+
+	if err := sandbox.NewManager(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating sandbox manager: %v\n", err)
+		os.Exit(1)
+	}
+
 	s, err := server.NewServer()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating server: %v\n", err)
 		os.Exit(1)
 	}
-	s.Init()
 	s.Start()
 }
 
