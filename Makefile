@@ -15,12 +15,12 @@ make-rootfs: prepare-dirs
 .PHONY: test-sandbox
 test-sandbox: make-rootfs
 	@echo "Running sandbox tests..."
-	sudo go test github.com/joshjms/castletown/sandbox -v
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/sandbox -v
 
 .PHONY: test-job
 test-job: make-rootfs
 	@echo "Running job tests..."
-	sudo go test github.com/joshjms/castletown/job -v
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/job -v
 
 
 .PHONY: build
