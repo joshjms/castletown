@@ -9,37 +9,26 @@ import (
 	"time"
 
 	"github.com/joshjms/castletown/config"
-	"github.com/joshjms/castletown/sandbox"
 	"github.com/joshjms/castletown/server/handler/exec"
+	"github.com/joshjms/castletown/server/handler/finish"
 )
 
 type Server struct {
 	srv *http.Server
-	m   *sandbox.Manager
 }
 
 func NewServer() (*Server, error) {
-	m, err := sandbox.NewManager()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Server{
-		m: m,
+		srv: &http.Server{
+			Addr:    fmt.Sprintf(":%d", config.Port),
+			Handler: http.DefaultServeMux,
+		},
 	}, nil
 }
 
-func (s *Server) Init() {
-	s.srv = &http.Server{
-		Addr:    fmt.Sprintf(":%d", config.Port),
-		Handler: http.DefaultServeMux,
-	}
-}
-
 func (s *Server) Start() {
-	execHandler := exec.NewExecHandler(s.m)
-
-	http.HandleFunc("/exec", execHandler.Handler)
+	http.HandleFunc("/exec", exec.Handler)
+	http.HandleFunc("/finish", finish.Handler)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
