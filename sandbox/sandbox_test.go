@@ -1,4 +1,4 @@
-package sandbox
+package sandbox_test
 
 import (
 	"os"
@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"github.com/joshjms/castletown/config"
+	"github.com/joshjms/castletown/sandbox"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
-	Init()
+	sandbox.Init()
 	config.UseDefaults()
 
-	NewManager()
+	sandbox.NewManager()
 
 	files, err := os.ReadDir("test_files")
 	require.NoError(nil, err, "failed to read test files directory: %v", err)
@@ -38,12 +39,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestSandboxAdd(t *testing.T) {
-	Init()
-
-	expectedStatus := STATUS_OK
+	expectedStatus := sandbox.STATUS_OK
 	expectedOutput := "15\n"
 
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/add.cpp",
 		Stdin:          "6 9\n",
 		ExpectedStatus: &expectedStatus,
@@ -55,11 +54,9 @@ func TestSandboxAdd(t *testing.T) {
 }
 
 func TestSandboxTimeLimitExceededA(t *testing.T) {
-	Init()
+	expectedStatus := sandbox.STATUS_TIME_LIMIT_EXCEEDED
 
-	expectedStatus := STATUS_TIME_LIMIT_EXCEEDED
-
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/tl1.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    1000,
@@ -69,11 +66,9 @@ func TestSandboxTimeLimitExceededA(t *testing.T) {
 }
 
 func TestSandboxTimeLimitExceededB(t *testing.T) {
-	Init()
+	expectedStatus := sandbox.STATUS_TIME_LIMIT_EXCEEDED
 
-	expectedStatus := STATUS_TIME_LIMIT_EXCEEDED
-
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/printloop.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    1000,
@@ -83,11 +78,9 @@ func TestSandboxTimeLimitExceededB(t *testing.T) {
 }
 
 func TestSandboxMemoryLimitExceeded(t *testing.T) {
-	Init()
+	expectedStatus := sandbox.STATUS_MEMORY_LIMIT_EXCEEDED
 
-	expectedStatus := STATUS_MEMORY_LIMIT_EXCEEDED
-
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/mem1.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    10000,
@@ -97,11 +90,9 @@ func TestSandboxMemoryLimitExceeded(t *testing.T) {
 }
 
 func TestSandboxFork(t *testing.T) {
-	Init()
+	expectedStatus := sandbox.STATUS_OK
 
-	expectedStatus := STATUS_OK
-
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/fork.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    1000,
@@ -111,11 +102,9 @@ func TestSandboxFork(t *testing.T) {
 }
 
 func TestSandboxRusageConsistency(t *testing.T) {
-	Init()
+	expectedStatus := sandbox.STATUS_OK
 
-	expectedStatus := STATUS_OK
-
-	tc := Testcase{
+	tc := sandbox.Testcase{
 		File:           "test_files/random.cpp",
 		ExpectedStatus: &expectedStatus,
 		TimeLimitMs:    1000,
