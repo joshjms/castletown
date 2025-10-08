@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/joshjms/castletown/sandbox"
 )
@@ -13,6 +14,8 @@ type Job struct {
 	Procs []Process `json:"steps"`
 
 	step int
+
+	mu sync.Mutex
 }
 
 type File struct {
@@ -32,6 +35,9 @@ type Process struct {
 }
 
 func (j *Job) Prepare() error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
 	if len(j.Procs) == 0 {
 		return fmt.Errorf("no processes specified")
 	}
@@ -48,10 +54,13 @@ func (j *Job) Prepare() error {
 }
 
 func (j *Job) ExecuteAll(ctx context.Context) ([]sandbox.Report, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
 	var reports []sandbox.Report
 
 	for j.step < len(j.Procs) {
-		report, err := j.Execute(ctx)
+		report, err := j.execute(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +70,7 @@ func (j *Job) ExecuteAll(ctx context.Context) ([]sandbox.Report, error) {
 	return reports, nil
 }
 
-func (j *Job) Execute(ctx context.Context) (sandbox.Report, error) {
+func (j *Job) execute(ctx context.Context) (sandbox.Report, error) {
 	proc := j.Procs[j.step]
 	fileDeps, err := getFileDependencies(j.ID, j.Procs, j.Files, j.step)
 	if err != nil {
@@ -87,6 +96,8 @@ func (j *Job) Execute(ctx context.Context) (sandbox.Report, error) {
 
 	containerId := fmt.Sprintf("%s-%d", j.ID, j.step)
 	s, err := sandbox.GetManager().NewSandbox(containerId, cfg)
+	defer sandbox.GetManager().DestroySandbox(containerId)
+
 	if err != nil {
 		return sandbox.Report{}, fmt.Errorf("cannot create sandbox for process %d: %v", j.step, err)
 	}
@@ -96,12 +107,12 @@ func (j *Job) Execute(ctx context.Context) (sandbox.Report, error) {
 		return sandbox.Report{}, fmt.Errorf("error running process %d: %v", j.step, err)
 	}
 
-	j.Next()
+	j.next()
 
 	return report, nil
 }
 
-func (j *Job) Next() bool {
+func (j *Job) next() bool {
 	if j.step < len(j.Procs) {
 		j.step++
 		return true
