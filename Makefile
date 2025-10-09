@@ -10,7 +10,7 @@ prepare-dirs:
 
 .PHONY: make-rootfs
 make-rootfs: prepare-dirs
-	bash scripts/rootfs.sh
+	sudo bash scripts/rootfs.sh
 
 .PHONY: test-sandbox
 test-sandbox: make-rootfs
