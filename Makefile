@@ -7,6 +7,7 @@ prepare-dirs:
 	@sudo mkdir -p /tmp/castletown/images
 	@sudo mkdir -p /tmp/castletown/libcontainer
 	@sudo mkdir -p /tmp/castletown/overlayfs
+	@sudo mkdir -p /tmp/castletown/rootfs
 
 .PHONY: make-rootfs
 make-rootfs: prepare-dirs
