@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/joshjms/castletown/config"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	_ "github.com/opencontainers/cgroups/devices"
@@ -23,6 +24,7 @@ func (s *Sandbox) createSpec() (*specs.Spec, error) {
 			NoNewPrivileges: true,
 		},
 		Root: &specs.Root{
+			Path:     config.RootfsDir,
 			Readonly: false,
 		},
 		Hostname: fmt.Sprintf("castletown-%s", s.id),
