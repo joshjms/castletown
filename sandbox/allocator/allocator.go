@@ -2,8 +2,6 @@ package allocator
 
 import (
 	"sync"
-
-	"github.com/joshjms/castletown/config"
 )
 
 const DEFAULT_SIZE uint32 = 65536
@@ -22,14 +20,13 @@ type Allocator struct {
 	mu sync.Mutex
 }
 
-func NewAllocator() (*Allocator, error) {
+func NewAllocator(maxConcurrency int) (*Allocator, error) {
 	startUid := uint32(100000)
 	startGid := uint32(100000)
-	maxContainers := config.MaxConcurrency
 
-	ranges := make([]Range, maxContainers)
-	used := make([]bool, maxContainers)
-	for i := range maxContainers {
+	ranges := make([]Range, maxConcurrency)
+	used := make([]bool, maxConcurrency)
+	for i := range maxConcurrency {
 		ranges[i] = Range{
 			UidStart: startUid + uint32(i)*DEFAULT_SIZE,
 			UidSize:  DEFAULT_SIZE,
