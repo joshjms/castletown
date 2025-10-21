@@ -80,6 +80,8 @@ func (s *Sandbox) Run(ctx context.Context) (Report, error) {
 		Init:            true,
 	}
 
+	startAt := time.Now()
+
 	if err := container.Run(process); err != nil {
 		return Report{}, fmt.Errorf("error running container: %w", err)
 	}
@@ -99,7 +101,9 @@ func (s *Sandbox) Run(ctx context.Context) (Report, error) {
 	state, _ := process.Wait()
 	processFinished <- struct{}{}
 
-	return s.makeReport(&stdoutBuf, &stderrBuf, state, timeLimitExceeded)
+	finishAt := time.Now()
+
+	return s.makeReport(&stdoutBuf, &stderrBuf, state, timeLimitExceeded, startAt, finishAt)
 }
 
 func getRlimits(cfg *RlimitConfig) []configs.Rlimit {
