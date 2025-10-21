@@ -95,7 +95,7 @@ func RunServer() {
 
 	job.NewJobPool()
 
-	if err := sandbox.NewManager(); err != nil {
+	if err := sandbox.NewManager(config.MaxConcurrency); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating sandbox manager: %v\n", err)
 		os.Exit(1)
 	}
