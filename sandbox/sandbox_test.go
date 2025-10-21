@@ -3,6 +3,7 @@ package sandbox_test
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/joshjms/castletown/config"
@@ -14,7 +15,7 @@ func TestMain(m *testing.M) {
 	sandbox.Init()
 	config.UseDefaults()
 
-	sandbox.NewManager()
+	sandbox.NewManager(2)
 
 	files, err := os.ReadDir("test_files")
 	require.NoError(nil, err, "failed to read test files directory: %v", err)
@@ -113,7 +114,8 @@ func TestSandboxRusageConsistency(t *testing.T) {
 	var minCpuUsage, maxCpuUsage uint64
 
 	for i := 0; i < 10; i++ {
-		report := tc.Run(t)
+		reports := tc.Run(t)
+		report := reports[0]
 
 		if i == 0 {
 			minCpuUsage = report.CPUTime
@@ -127,4 +129,38 @@ func TestSandboxRusageConsistency(t *testing.T) {
 	}
 
 	require.Less(t, maxCpuUsage-minCpuUsage, uint64(10000), "cpu usage inconsistent")
+}
+
+func TestSandboxConcurrency(t *testing.T) {
+	expectedStatus := sandbox.STATUS_OK
+
+	tc := sandbox.Testcase{
+		File:           "test_files/sleep.cpp",
+		ExpectedStatus: &expectedStatus,
+		TimeLimitMs:    3000,
+		Concurrency:    5,
+	}
+
+	reports := tc.Run(t)
+
+	startTimes := make([]int64, len(reports))
+	finishTimes := make([]int64, len(reports))
+
+	for i, report := range reports {
+		startTimes[i] = report.StartAt.UnixMilli()
+		finishTimes[i] = report.FinishAt.UnixMilli()
+	}
+
+	sort.Slice(startTimes, func(i, j int) bool {
+		return startTimes[i] < startTimes[j]
+	})
+	sort.Slice(finishTimes, func(i, j int) bool {
+		return finishTimes[i] < finishTimes[j]
+	})
+
+	for i := 2; i < len(startTimes); i++ {
+		require.Less(t, finishTimes[i-2], startTimes[i], "semaphore didn't work correctly")
+	}
+
+	tc.Run(t)
 }

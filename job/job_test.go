@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	config.UseDefaults()
 
 	job.NewJobPool()
-	sandbox.NewManager()
+	sandbox.NewManager(config.MaxConcurrency)
 
 	exitCode := m.Run()
 

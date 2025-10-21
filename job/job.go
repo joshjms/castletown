@@ -95,14 +95,12 @@ func (j *Job) execute(ctx context.Context) (sandbox.Report, error) {
 	cfg.Stdin = proc.Stdin
 
 	containerId := fmt.Sprintf("%s-%d", j.ID, j.step)
-	s, err := sandbox.GetManager().NewSandbox(containerId, cfg)
-	defer sandbox.GetManager().DestroySandbox(containerId)
-
-	if err != nil {
+	if err := sandbox.GetManager().NewSandbox(containerId, cfg); err != nil {
 		return sandbox.Report{}, fmt.Errorf("cannot create sandbox for process %d: %v", j.step, err)
 	}
+	defer sandbox.GetManager().DestroySandbox(containerId)
 
-	report, err := s.Run(ctx)
+	report, err := sandbox.GetManager().RunSandbox(ctx, containerId)
 	if err != nil {
 		return sandbox.Report{}, fmt.Errorf("error running process %d: %v", j.step, err)
 	}

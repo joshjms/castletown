@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"syscall"
+	"time"
 )
 
 type Status string
@@ -29,6 +30,9 @@ type Report struct {
 	CPUTime  uint64
 	Memory   uint64
 	WallTime int64
+
+	StartAt  time.Time
+	FinishAt time.Time
 }
 
 func (r Report) String() string {
@@ -45,7 +49,7 @@ func (r Report) String() string {
 	return fmt.Sprintf("status: %s\nexit code: %d\nsignal: %d\nstdout: %s\nstderr:%s\ncpu:%d usec\nmemory:%d bytes\n", r.Status, r.ExitCode, r.Signal, stdoutTrim, stderrTrim, r.CPUTime, r.Memory)
 }
 
-func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool) (Report, error) {
+func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessState, timeLimitExceeded bool, startAt, finishAt time.Time) (Report, error) {
 	stdout, err := io.ReadAll(stdoutBuf)
 	if err != nil {
 		return Report{}, fmt.Errorf("error reading stdout: %w", err)
@@ -87,5 +91,7 @@ func (s *Sandbox) makeReport(stdoutBuf, stderrBuf io.Reader, state *os.ProcessSt
 		Stderr:   string(stderr),
 		CPUTime:  stats.GetCPU().GetUsageUsec(),
 		Memory:   stats.GetMemory().GetMaxUsage(),
+		StartAt:  startAt,
+		FinishAt: finishAt,
 	}, nil
 }

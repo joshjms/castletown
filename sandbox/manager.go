@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -13,21 +14,22 @@ type Manager struct {
 	sandboxes       map[string]*Sandbox
 	allocatedRanges map[string]int
 
-	allocator *allocator.Allocator
+	allocator      *allocator.Allocator
+	maxConcurrency int
 
-	mu sync.Mutex
+	mu  sync.Mutex
+	sem chan struct{}
 }
 
-func NewManager() error {
-	alloc, err := allocator.NewAllocator()
-	if err != nil {
-		return err
-	}
+func NewManager(maxConcurrency int) error {
+	alloc := allocator.NewAllocator()
 
 	m = &Manager{
 		sandboxes:       make(map[string]*Sandbox),
 		allocatedRanges: make(map[string]int),
 		allocator:       alloc,
+		maxConcurrency:  maxConcurrency,
+		sem:             make(chan struct{}, maxConcurrency),
 	}
 	return nil
 }
@@ -36,17 +38,17 @@ func GetManager() *Manager {
 	return m
 }
 
-func (m *Manager) NewSandbox(id string, cfg *Config) (*Sandbox, error) {
+func (m *Manager) NewSandbox(id string, cfg *Config) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if _, exists := m.sandboxes[id]; exists {
-		return nil, fmt.Errorf("sandbox with id %q already exists", id)
+		return fmt.Errorf("sandbox with id %q already exists", id)
 	}
 
 	idx, rng := m.allocator.Allocate()
 	if idx == -1 {
-		return nil, fmt.Errorf("no available uid/gid ranges")
+		return fmt.Errorf("no available uid/gid ranges")
 	}
 
 	cfg.UserNamespace = &UserNamespaceConfig{
@@ -66,7 +68,27 @@ func (m *Manager) NewSandbox(id string, cfg *Config) (*Sandbox, error) {
 	m.sandboxes[id] = sandbox
 	m.allocatedRanges[id] = idx
 
-	return sandbox, nil
+	return nil
+}
+
+func (m *Manager) RunSandbox(ctx context.Context, id string) (Report, error) {
+	m.sem <- struct{}{}
+	defer func() { <-m.sem }()
+
+	m.mu.Lock()
+	sandbox, exists := m.sandboxes[id]
+	m.mu.Unlock()
+
+	if !exists {
+		return Report{}, fmt.Errorf("sandbox with id %q does not exist", id)
+	}
+
+	report, err := sandbox.Run(ctx)
+	if err != nil {
+		return Report{}, fmt.Errorf("error running sandbox %q: %w", id, err)
+	}
+
+	return report, nil
 }
 
 func (m *Manager) DestroySandbox(id string) error {
