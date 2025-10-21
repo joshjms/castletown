@@ -11,8 +11,7 @@ import (
 func TestAllocator(t *testing.T) {
 	config.UseDefaults()
 
-	a, err := allocator.NewAllocator(2)
-	require.NoError(t, err, "Failed to create allocator: %v", err)
+	a := allocator.NewAllocator()
 
 	i1, _ := a.Allocate()
 	i2, _ := a.Allocate()
@@ -22,6 +21,6 @@ func TestAllocator(t *testing.T) {
 
 	require.Equal(t, 0, i1, "incorrect index for first allocation, expected 0")
 	require.Equal(t, 1, i2, "incorrect index for second allocation, expected 1")
-	require.Equal(t, -1, i3, "incorrect index for third allocation, expected -1")
+	require.Equal(t, 2, i3, "incorrect index for third allocation, expected 2")
 	require.Equal(t, 0, i4, "incorrect index for fourth allocation, expected 0")
 }
