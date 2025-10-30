@@ -59,6 +59,10 @@ func handleRequest(ctx context.Context, req Request) ([]sandbox.Report, error) {
 	jp := job.GetJobPool()
 	_job := jp.AddOrAppendJob(&j)
 
+	if err := _job.Prepare(); err != nil {
+		return nil, fmt.Errorf("error preparing job: %w", err)
+	}
+
 	reports, err := _job.ExecuteAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error executing job: %w", err)
