@@ -31,3 +31,16 @@ build:
 .PHONY: dev
 dev:
 	sudo env "PATH=$$PATH:/usr/local/go/bin" go run main.go server
+
+.PHONY: e2e
+e2e: prepare-dirs make-rootfs
+	@echo "Running end-to-end tests..."
+	@echo "Building castletown..."
+	@sudo env "PATH=$$PATH:/usr/local/go/bin" go build -o tmp/castletown main.go
+	@echo "Starting castletown server..."
+	@sudo tmp/castletown server &
+	@sleep 2
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test -v ./tests/e2e -timeout 2m
+	@sudo pkill castletown
+	@sudo rm -rf tmp
+
