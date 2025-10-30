@@ -23,17 +23,8 @@ test-job: make-rootfs
 	@echo "Running job tests..."
 	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/job -v
 
-
-.PHONY: build
-build:
-	bash scripts/build.sh
-
-.PHONY: dev
-dev:
-	sudo env "PATH=$$PATH:/usr/local/go/bin" go run main.go server
-
-.PHONY: e2e
-e2e: prepare-dirs make-rootfs
+.PHONY: test-e2e
+test-e2e: prepare-dirs make-rootfs
 	@echo "Running end-to-end tests..."
 	@echo "Building castletown..."
 	@sudo env "PATH=$$PATH:/usr/local/go/bin" go build -o tmp/castletown main.go
@@ -43,4 +34,12 @@ e2e: prepare-dirs make-rootfs
 	sudo env "PATH=$$PATH:/usr/local/go/bin" go test -v ./tests/e2e -timeout 2m
 	@sudo pkill castletown
 	@sudo rm -rf tmp
+
+.PHONY: build
+build:
+	bash scripts/build.sh
+
+.PHONY: dev
+dev:
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go run main.go server
 
