@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package castletown;
+
+import "common.proto";
+
+option go_package = "github.com/joshjms/castletown/proto";
+
+// ExecService handles job execution requests
+service ExecService {
+  rpc Execute(ExecRequest) returns (ExecResponse);
+}
+
+// ExecRequest contains the job execution parameters
+message ExecRequest {
+  string id = 1;
+  repeated File files = 2;
+  repeated Process procs = 3;
+}
+
+// ExecResponse contains the execution results
+message ExecResponse {
+  string id = 1;
+  repeated Report reports = 2;
+}

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package castletown;
+
+option go_package = "github.com/joshjms/castletown/proto";
+
+// DoneService handles job completion notifications
+service DoneService {
+  rpc Done(DoneRequest) returns (DoneResponse);
+}
+
+// DoneRequest contains the job ID to mark as done
+message DoneRequest {
+  string id = 1;
+}
+
+// DoneResponse is an empty response
+message DoneResponse {
+}
