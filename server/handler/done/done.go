@@ -1,4 +1,4 @@
-package finish
+package done
 
 import (
 	"encoding/json"

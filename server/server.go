@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/joshjms/castletown/config"
+	"github.com/joshjms/castletown/server/handler/done"
 	"github.com/joshjms/castletown/server/handler/exec"
-	"github.com/joshjms/castletown/server/handler/finish"
 )
 
 type Server struct {
@@ -28,7 +28,7 @@ func NewServer() (*Server, error) {
 
 func (s *Server) Start() {
 	http.HandleFunc("/exec", exec.Handler)
-	http.HandleFunc("/finish", finish.Handler)
+	http.HandleFunc("/done", done.Handler)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
