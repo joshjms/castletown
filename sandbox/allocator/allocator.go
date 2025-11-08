@@ -8,15 +8,21 @@ const DEFAULT_SIZE uint32 = 65536
 const START_UID_GID uint32 = 1000000
 
 type Range struct {
-	UidStart uint32
-	UidSize  uint32
-	GidStart uint32
-	GidSize  uint32
+	UIDStart uint32
+	UIDSize  uint32
+	GIDStart uint32
+	GIDSize  uint32
+}
+
+type AllocResult struct {
+	index int
+	CPU   int
+	ID    Range
 }
 
 type Allocator struct {
 	used map[int]bool
-	mex  int
+	free int
 
 	mu sync.Mutex
 }
@@ -24,41 +30,46 @@ type Allocator struct {
 func NewAllocator() *Allocator {
 	return &Allocator{
 		used: make(map[int]bool),
-		mex:  0,
 	}
 }
 
-func (a *Allocator) Allocate() (int, Range) {
+func (a *Allocator) Allocate() AllocResult {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	a.used[a.mex] = true
 	r := Range{
-		UidStart: START_UID_GID + uint32(a.mex)*DEFAULT_SIZE,
-		UidSize:  DEFAULT_SIZE,
-		GidStart: START_UID_GID + uint32(a.mex)*DEFAULT_SIZE,
-		GidSize:  DEFAULT_SIZE,
-	}
-	use := a.mex
-
-	for a.used[a.mex] {
-		a.mex++
+		UIDStart: START_UID_GID + uint32(a.free)*DEFAULT_SIZE,
+		UIDSize:  DEFAULT_SIZE,
+		GIDStart: START_UID_GID + uint32(a.free)*DEFAULT_SIZE,
+		GIDSize:  DEFAULT_SIZE,
 	}
 
-	return use, r
+	res := AllocResult{
+		index: a.free,
+		CPU:   a.free,
+		ID:    r,
+	}
+
+	use := a.free
+
+	for a.used[use] {
+		use++
+	}
+
+	return res
 }
 
-func (a *Allocator) Free(i int) int {
+func (a *Allocator) Free(res AllocResult) int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if i < 0 || !a.used[i] {
+	if res.index < 0 || !a.used[res.index] {
 		return -1
 	}
 
-	delete(a.used, i)
-	if i < a.mex {
-		a.mex = i
+	delete(a.used, res.index)
+	if res.index < a.free {
+		a.free = res.index
 	}
 
 	return 0

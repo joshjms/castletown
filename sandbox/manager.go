@@ -12,7 +12,7 @@ var m *Manager
 
 type Manager struct {
 	sandboxes       map[string]*Sandbox
-	allocatedRanges map[string]int
+	allocatedRanges map[string]allocator.AllocResult
 
 	allocator      *allocator.Allocator
 	maxConcurrency int
@@ -21,17 +21,18 @@ type Manager struct {
 	sem chan struct{}
 }
 
-func NewManager(maxConcurrency int) error {
+func NewManager(maxConcurrency int) *Manager {
 	alloc := allocator.NewAllocator()
 
 	m = &Manager{
 		sandboxes:       make(map[string]*Sandbox),
-		allocatedRanges: make(map[string]int),
+		allocatedRanges: make(map[string]allocator.AllocResult),
 		allocator:       alloc,
 		maxConcurrency:  maxConcurrency,
 		sem:             make(chan struct{}, maxConcurrency),
 	}
-	return nil
+
+	return m
 }
 
 func GetManager() *Manager {
@@ -46,19 +47,19 @@ func (m *Manager) NewSandbox(id string, cfg *Config) error {
 		return fmt.Errorf("sandbox with id %q already exists", id)
 	}
 
-	idx, rng := m.allocator.Allocate()
-	if idx == -1 {
-		return fmt.Errorf("no available uid/gid ranges")
-	}
+	res := m.allocator.Allocate()
 
 	cfg.UserNamespace = &UserNamespaceConfig{
-		HostUID:      uint32(rng.UidStart),
+		HostUID:      uint32(res.ID.UIDStart),
 		ContainerUID: 0,
-		UIDMapCount:  uint32(rng.UidSize),
-		HostGID:      uint32(rng.GidStart),
+		UIDMapCount:  uint32(res.ID.UIDSize),
+		HostGID:      uint32(res.ID.GIDStart),
 		ContainerGID: 0,
-		GIDMapCount:  uint32(rng.GidSize),
+		GIDMapCount:  uint32(res.ID.GIDSize),
 	}
+
+	cfg.Cgroup.CpusetCpus = fmt.Sprintf("%d", res.CPU)
+	cfg.Cgroup.CpusetMems = "0"
 
 	sandbox := &Sandbox{
 		id:     id,
@@ -66,7 +67,7 @@ func (m *Manager) NewSandbox(id string, cfg *Config) error {
 	}
 
 	m.sandboxes[id] = sandbox
-	m.allocatedRanges[id] = idx
+	m.allocatedRanges[id] = res
 
 	return nil
 }
@@ -115,5 +116,6 @@ func (m *Manager) DestroySandbox(id string) error {
 
 	delete(m.sandboxes, id)
 	delete(m.allocatedRanges, id)
+
 	return nil
 }
