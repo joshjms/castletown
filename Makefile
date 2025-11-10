@@ -4,36 +4,16 @@ all:
 .PHONY: prepare-dirs
 prepare-dirs:
 	@sudo mkdir -p /tmp/castletown/storage
-	@sudo mkdir -p /tmp/castletown/images
 	@sudo mkdir -p /tmp/castletown/libcontainer
 	@sudo mkdir -p /tmp/castletown/overlayfs
 	@sudo mkdir -p /tmp/castletown/rootfs
+	@sudo mkdir -p /tmp/castletown/work
+	@sudo mkdir -p /var/castletown/images
+	@sudo mkdir -p /var/castletown/testcases
 
 .PHONY: make-rootfs
 make-rootfs: prepare-dirs
 	sudo bash scripts/rootfs.sh
-
-.PHONY: test-sandbox
-test-sandbox: make-rootfs
-	@echo "Running sandbox tests..."
-	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/sandbox -v
-
-.PHONY: test-job
-test-job: make-rootfs
-	@echo "Running job tests..."
-	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/job -v
-
-.PHONY: test-e2e
-test-e2e: prepare-dirs make-rootfs
-	@echo "Running end-to-end tests..."
-	@echo "Building castletown..."
-	@sudo env "PATH=$$PATH:/usr/local/go/bin" go build -o tmp/castletown main.go
-	@echo "Starting castletown server..."
-	@sudo tmp/castletown server &
-	@sleep 2
-	sudo env "PATH=$$PATH:/usr/local/go/bin" go test -v ./tests/e2e -timeout 2m
-	@sudo pkill castletown
-	@sudo rm -rf tmp
 
 .PHONY: build
 build:
@@ -41,5 +21,45 @@ build:
 
 .PHONY: dev
 dev:
-	sudo env "PATH=$$PATH:/usr/local/go/bin" go run main.go server
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go run main.go start
 
+.PHONY: docker-up
+docker-up:
+	docker compose up --build -d
+
+.PHONY: docker-down
+docker-down:
+	docker compose down
+
+.PHONY: docker-logs
+docker-logs:
+	docker compose logs -f
+
+.PHONY: migrate-up
+migrate-up:
+	migrate -path db/migrations -database "postgres://castletown:castletown@localhost:5432/castletown?sslmode=disable" up
+
+.PHONY: migrate-down
+migrate-down:
+	migrate -path db/migrations -database "postgres://castletown:castletown@localhost:5432/castletown?sslmode=disable" down
+
+.PHONY: migrate-create
+migrate-create:
+	@read -p "Enter migration name: " name; \
+	migrate create -ext sql -dir db/migrations -seq $$name
+
+
+.PHONY: test-grader
+test-grader:
+	@echo "Running grader tests..."
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/internal/grader -v
+
+.PHONY: test-worker
+test-worker: make-rootfs
+	@echo "Running worker tests..."
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/internal/worker -v
+
+.PHONY: test-sandbox
+test-sandbox: make-rootfs
+	@echo "Running sandbox tests..."
+	sudo env "PATH=$$PATH:/usr/local/go/bin" go test github.com/joshjms/castletown/internal/sandbox -v

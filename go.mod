@@ -5,14 +5,15 @@ go 1.24.3
 require (
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/google/uuid v1.6.0
+	github.com/lib/pq v1.10.9
 	github.com/opencontainers/cgroups v0.0.3
 	github.com/opencontainers/runc v1.3.0
 	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sys v0.34.0
-	google.golang.org/grpc v1.76.0
-	google.golang.org/protobuf v1.36.6
 )
 
 require (
@@ -24,7 +25,10 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/user v0.3.0 // indirect
@@ -38,8 +42,8 @@ require (
 	github.com/vishvananda/netlink v1.3.0 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -49,8 +49,8 @@ type Submission struct {
 
 // Testcase represents a single test case for a problem
 type Testcase struct {
-	ID         string `json:"id" db:"id"`
-	ProblemID  string `json:"problem_id" db:"problem_id"`
+	ID         int64  `json:"id" db:"id"`
+	ProblemID  int64  `json:"problem_id" db:"problem_id"`
 	Input      string `json:"input" db:"input"`
 	InputFile  string `json:"input_file" db:"input_file"`
 	Output     string `json:"output" db:"output"`
@@ -61,7 +61,7 @@ type Testcase struct {
 
 // TestcaseResult represents the result of running a single test case
 type TestcaseResult struct {
-	TestcaseID     string  `json:"testcase_id"`
+	TestcaseID     int64   `json:"testcase_id"`
 	Verdict        Verdict `json:"verdict"`
 	ExecutionTime  int64   `json:"execution_time"`
 	MemoryUsed     int64   `json:"memory_used"`

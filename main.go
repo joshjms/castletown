@@ -17,7 +17,7 @@ package main
 
 import (
 	"github.com/joshjms/castletown/cmd"
-	"github.com/joshjms/castletown/sandbox"
+	"github.com/joshjms/castletown/internal/sandbox"
 )
 
 func init() {

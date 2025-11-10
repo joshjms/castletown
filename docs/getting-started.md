@@ -2,6 +2,8 @@
 
 This guide will get you started on how to set up the castletown server. The following procedure is run in an Ubuntu 25.04 LTS amd64 brand new GCP Compute Engine instance.
 
+> ⚡️ **Want the fastest path?** Run `docker compose up --build` from the repo root. The container image now bundles everything (including the rootfs bootstrap) and talks to Postgres, RabbitMQ, and MinIO that are part of the Compose stack. Continue with the manual steps below only if you need to run Castletown directly on a host.
+
 ## Downloading `castletown`
 
 ```shell

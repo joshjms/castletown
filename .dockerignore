@@ -1,0 +1,8 @@
+dist
+tmp
+.git
+.github
+.vscode
+db/data
+docs
+scripts/rootfs_cache
